@@ -2,13 +2,17 @@
 
 import Link from "next/link";
 import { PanelLeft, SquarePen, Settings } from "lucide-react";
+import type { ChatNode } from "@/lib/chat-tree";
 import { useSidebar } from "./sidebar-context";
 import { ChatTree } from "./chat-tree";
-import { getStubChats } from "@/lib/stub-chats";
 
-const stubChats = getStubChats();
-
-export function Sidebar({ username }: { username: string }) {
+export function Sidebar({
+  username,
+  chats,
+}: {
+  username: string;
+  chats: ChatNode[];
+}) {
   const { collapsed, toggleSidebar } = useSidebar();
 
   return (
@@ -39,7 +43,7 @@ export function Sidebar({ username }: { username: string }) {
       {/* Chat tree */}
       {!collapsed && (
         <div className="flex-1 overflow-y-auto px-2 py-1">
-          <ChatTree nodes={stubChats} />
+          <ChatTree nodes={chats} />
         </div>
       )}
 

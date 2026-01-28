@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
+import { getChatsByUser } from "@/db/queries";
+import { buildChatTree } from "@/lib/chat-tree";
 import { AppShell } from "@/components/sidebar/app-shell";
 
 export default async function AppLayout({
@@ -12,5 +14,12 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  return <AppShell username={session.username}>{children}</AppShell>;
+  const rows = getChatsByUser(session.sub);
+  const chats = buildChatTree(rows);
+
+  return (
+    <AppShell username={session.username} chats={chats}>
+      {children}
+    </AppShell>
+  );
 }

@@ -1,6 +1,6 @@
-import { eq, count, isNull, and } from "drizzle-orm";
+import { eq, count, isNull, and, desc } from "drizzle-orm";
 import { db } from ".";
-import { users, inviteCodes, apiKeys, type Platform } from "./schema";
+import { users, inviteCodes, apiKeys, chats, type Platform } from "./schema";
 
 export function getUserCount() {
   const [row] = db.select({ count: count() }).from(users).all();
@@ -87,4 +87,18 @@ export function getApiKeyByUserAndPlatform(userId: number, platform: Platform) {
     .from(apiKeys)
     .where(and(eq(apiKeys.userId, userId), eq(apiKeys.platform, platform)))
     .get();
+}
+
+export function getChatsByUser(userId: number) {
+  return db
+    .select({
+      id: chats.id,
+      parentId: chats.parentId,
+      title: chats.title,
+      updatedAt: chats.updatedAt,
+    })
+    .from(chats)
+    .where(eq(chats.userId, userId))
+    .orderBy(desc(chats.updatedAt))
+    .all();
 }

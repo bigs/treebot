@@ -1,23 +1,27 @@
 "use client";
 
+import Link from "next/link";
 import { ChevronRight, MessageSquare } from "lucide-react";
 import { useSidebar } from "./sidebar-context";
-import type { ChatNode } from "@/lib/stub-chats";
+import type { ChatNode } from "@/lib/chat-tree";
 
 function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
   const { expandedChats, toggleChat } = useSidebar();
-  const hasChildren = node.children && node.children.length > 0;
-  const isExpanded = expandedChats.has(node.id);
+  const hasChildren = node.children.length > 0;
+  const isExpanded = expandedChats.has(String(node.id));
 
   return (
     <div>
-      <button
-        type="button"
-        onClick={() => {
-          if (hasChildren) toggleChat(node.id);
+      <Link
+        href={`/chats/${String(node.id)}`}
+        onClick={(e) => {
+          if (hasChildren) {
+            e.preventDefault();
+            toggleChat(String(node.id));
+          }
         }}
         className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
-        style={{ paddingLeft: `${(depth * 12 + 8).toString()}px` }}
+        style={{ paddingLeft: `${String(depth * 12 + 8)}px` }}
       >
         {hasChildren ? (
           <ChevronRight
@@ -27,10 +31,10 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
           <MessageSquare className="size-4 shrink-0" />
         )}
         <span className="truncate">{node.title}</span>
-      </button>
+      </Link>
       {hasChildren && isExpanded && (
         <div>
-          {node.children?.map((child) => (
+          {node.children.map((child) => (
             <ChatTreeItem key={child.id} node={child} depth={depth + 1} />
           ))}
         </div>
