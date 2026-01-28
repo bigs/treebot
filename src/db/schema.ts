@@ -38,6 +38,24 @@ export const apiKeys = sqliteTable(
   ]
 );
 
+export const chats = sqliteTable("chats", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id),
+  parentId: integer("parent_id"),
+  provider: text("provider", { enum: ["google", "openai"] }).notNull(),
+  model: text("model").notNull(),
+  title: text("title"),
+  messages: text("messages", { mode: "json" }).notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+});
+
 export const inviteCodes = sqliteTable("invite_codes", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   code: text("code").unique().notNull(),
