@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
-import { ContinueButton } from "./continue-button";
+import { getApiKeysByUser } from "@/db/queries";
+import { ApiKeyForm } from "./api-key-form";
 
 export default async function OnboardingStep2() {
   const session = await getSession();
@@ -8,17 +9,16 @@ export default async function OnboardingStep2() {
     redirect("/login");
   }
 
+  const savedKeys = getApiKeysByUser(session.sub);
+  const savedPlatforms = savedKeys.map((k) => k.platform);
+
   return (
     <div className="space-y-4">
       <p className="text-muted-foreground text-sm">
-        Configure your API keys for AI providers. You can set these in your{" "}
-        <code className="bg-muted rounded px-1 py-0.5 text-xs">.env.local</code>{" "}
-        file.
+        Add API keys for the AI providers you want to use. At least one key is
+        required.
       </p>
-      <div className="text-muted-foreground rounded border border-dashed p-4 text-center text-sm">
-        API key configuration coming soon.
-      </div>
-      <ContinueButton />
+      <ApiKeyForm savedPlatforms={savedPlatforms} />
     </div>
   );
 }
