@@ -39,11 +39,13 @@ export const apiKeys = sqliteTable(
 );
 
 export const chats = sqliteTable("chats", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
   userId: integer("user_id")
     .notNull()
     .references(() => users.id),
-  parentId: integer("parent_id"),
+  parentId: text("parent_id"),
   provider: text("provider", { enum: ["google", "openai"] }).notNull(),
   model: text("model").notNull(),
   title: text("title"),

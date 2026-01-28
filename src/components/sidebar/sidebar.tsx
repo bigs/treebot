@@ -30,13 +30,13 @@ export function Sidebar({
           <PanelLeft className="size-5" />
         </button>
         {!collapsed && (
-          <button
-            type="button"
+          <Link
+            href="/chats/new"
             className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ml-auto rounded-md p-1.5"
             aria-label="New chat"
           >
             <SquarePen className="size-5" />
-          </button>
+          </Link>
         )}
       </div>
 

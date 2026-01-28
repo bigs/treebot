@@ -1,17 +1,17 @@
 export interface ChatNode {
-  id: number;
+  id: string;
   title: string;
   children: ChatNode[];
 }
 
 interface ChatRow {
-  id: number;
-  parentId: number | null;
+  id: string;
+  parentId: string | null;
   title: string | null;
 }
 
 export function buildChatTree(rows: ChatRow[]): ChatNode[] {
-  const nodeMap = new Map<number, ChatNode>();
+  const nodeMap = new Map<string, ChatNode>();
   const roots: ChatNode[] = [];
 
   for (const row of rows) {

@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "bb1871f6-1bef-42f8-a6b3-ad86b3223cc2",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "5f53a79f-abb8-4d1d-ae39-3c8329322c8d",
+  "prevId": "bb1871f6-1bef-42f8-a6b3-ad86b3223cc2",
   "tables": {
     "api_keys": {
       "name": "api_keys",
@@ -77,10 +77,10 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "integer",
+          "type": "text",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": true
+          "autoincrement": false
         },
         "user_id": {
           "name": "user_id",
@@ -91,7 +91,7 @@
         },
         "parent_id": {
           "name": "parent_id",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
