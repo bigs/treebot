@@ -1,6 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport, type UIMessage } from "ai";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { ArrowUp, Square } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -15,6 +22,8 @@ interface ChatViewProps {
   modelName: string;
   reasoningLevels: ReasoningOption[];
   initialReasoningLevel: string;
+  initialMessages: UIMessage[];
+  initialTitle?: string;
 }
 
 export function ChatView({
@@ -22,14 +31,73 @@ export function ChatView({
   modelName,
   reasoningLevels,
   initialReasoningLevel,
+  initialMessages,
+  initialTitle,
 }: ChatViewProps) {
+  const router = useRouter();
   const [reasoningLevel, setReasoningLevel] = useState(initialReasoningLevel);
+  const [title, setTitle] = useState(initialTitle);
+  const [input, setInput] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const autoTriggeredRef = useRef(false);
+
+  const chat = useChat({
+    id: chatId,
+    transport: new DefaultChatTransport({
+      api: `/chats/${chatId}/stream`,
+    }),
+    messages: initialMessages,
+    onFinish: () => {
+      router.refresh();
+    },
+  });
+
+  const isActive = chat.status === "streaming" || chat.status === "submitted";
+
+  // Auto-trigger for new chats: if all messages are user-only, send to get assistant response
+  useEffect(() => {
+    if (autoTriggeredRef.current) return;
+    const hasAssistant = initialMessages.some((m) => m.role === "assistant");
+    if (!hasAssistant && initialMessages.length > 0) {
+      autoTriggeredRef.current = true;
+      void chat.sendMessage();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
+  }, []);
+
+  // Sync title from server
+  useEffect(() => {
+    setTitle(initialTitle);
+  }, [initialTitle]);
+
+  // Auto-scroll on new messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chat.messages]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (ta) {
+      ta.style.height = "auto";
+      ta.style.height = `${String(Math.min(ta.scrollHeight, 200))}px`;
+    }
+  }, [input]);
+
+  function handleSubmit(e: React.SyntheticEvent) {
+    e.preventDefault();
+    const trimmed = input.trim();
+    if (!trimmed || isActive) return;
+    void chat.sendMessage({ text: trimmed });
+    setInput("");
+  }
 
   return (
     <div className="flex h-screen flex-col">
       <header className="border-b px-4 py-3">
         <div className="flex items-center gap-3">
-          <h1 className="text-sm font-medium">{modelName}</h1>
+          <h1 className="text-sm font-medium">{title ?? modelName}</h1>
           {reasoningLevels.length > 0 && (
             <Select value={reasoningLevel} onValueChange={setReasoningLevel}>
               <SelectTrigger className="w-[160px]" size="sm">
@@ -47,9 +115,94 @@ export function ChatView({
         </div>
       </header>
 
-      <main className="flex flex-1 items-center justify-center">
-        <p className="text-muted-foreground text-sm">Chat {chatId}</p>
+      <main className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-3xl px-4 py-6">
+          <div className="space-y-6">
+            {chat.messages.map((message) => (
+              <MessageBubble key={message.id} message={message} />
+            ))}
+            {chat.error && (
+              <div className="text-destructive text-sm">
+                Error: {chat.error.message}
+              </div>
+            )}
+          </div>
+          <div ref={messagesEndRef} />
+        </div>
       </main>
+
+      <div className="border-t px-4 py-3">
+        <form
+          onSubmit={handleSubmit}
+          className="mx-auto flex max-w-3xl items-end gap-2"
+        >
+          <textarea
+            ref={textareaRef}
+            className="border-input bg-background placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex-1 resize-none rounded-lg border px-4 py-3 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
+            rows={1}
+            placeholder="Send a message..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e);
+              }
+            }}
+          />
+          {isActive ? (
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              className="shrink-0 rounded-full"
+              onClick={() => void chat.stop()}
+            >
+              <Square className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              type="submit"
+              size="icon"
+              disabled={!input.trim()}
+              className="shrink-0 rounded-full"
+            >
+              <ArrowUp className="h-4 w-4" />
+            </Button>
+          )}
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function MessageBubble({ message }: { message: UIMessage }) {
+  const isUser = message.role === "user";
+
+  const textContent = message.parts
+    .filter((p): p is { type: "text"; text: string } => p.type === "text")
+    .map((p) => p.text)
+    .join("");
+
+  if (isUser) {
+    return (
+      <div className="flex justify-end">
+        <div className="bg-primary text-primary-foreground max-w-[80%] rounded-2xl px-4 py-2.5 text-sm">
+          {textContent}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex justify-start">
+      <div className="max-w-[80%]">
+        <div className="prose prose-sm dark:prose-invert max-w-none">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {textContent}
+          </ReactMarkdown>
+        </div>
+      </div>
     </div>
   );
 }

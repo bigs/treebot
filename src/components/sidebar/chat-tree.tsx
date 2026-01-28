@@ -78,7 +78,7 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
       <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
         <DropdownMenuTrigger asChild>
           <button
-            className={`absolute top-1/2 right-1 -translate-y-1/2 rounded-md p-1 opacity-0 transition-opacity hover:bg-black/6 group-hover/item:opacity-100 dark:hover:bg-white/8 ${dropdownOpen ? "opacity-100" : ""}`}
+            className={`absolute top-1/2 right-1 -translate-y-1/2 rounded-md p-1 opacity-0 transition-opacity group-hover/item:opacity-100 hover:bg-black/6 dark:hover:bg-white/8 ${dropdownOpen ? "opacity-100" : ""}`}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();

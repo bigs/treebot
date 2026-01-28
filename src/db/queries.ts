@@ -133,6 +133,26 @@ export function getChatById(chatId: string, userId: number) {
     .get();
 }
 
+export function updateChatMessages(
+  chatId: string,
+  userId: number,
+  messages: unknown[]
+) {
+  return db
+    .update(chats)
+    .set({ messages, updatedAt: new Date().toISOString() })
+    .where(and(eq(chats.id, chatId), eq(chats.userId, userId)))
+    .run();
+}
+
+export function updateChatTitle(chatId: string, userId: number, title: string) {
+  return db
+    .update(chats)
+    .set({ title, updatedAt: new Date().toISOString() })
+    .where(and(eq(chats.id, chatId), eq(chats.userId, userId)))
+    .run();
+}
+
 export function deleteChatWithChildren(chatId: string, userId: number) {
   const userChats = db
     .select({ id: chats.id, parentId: chats.parentId })

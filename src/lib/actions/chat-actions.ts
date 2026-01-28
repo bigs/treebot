@@ -33,7 +33,13 @@ export async function createChatAction(input: {
     return { error: "Model is required." };
   }
 
-  const messages = [{ role: "user" as const, content: message }];
+  const messages = [
+    {
+      id: crypto.randomUUID(),
+      role: "user" as const,
+      parts: [{ type: "text" as const, text: message }],
+    },
+  ];
   const modelParams: ModelParams | undefined = input.reasoningLevel
     ? { reasoning_effort: input.reasoningLevel }
     : undefined;

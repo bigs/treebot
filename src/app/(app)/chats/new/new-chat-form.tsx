@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowUp, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -44,9 +44,7 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
       const model = models.find((m) => m.id === storedId);
       if (model && model.reasoningLevels.length > 0) {
         const storedLevel = localStorage.getItem(LS_REASONING_KEY);
-        setReasoningLevel(
-          validReasoningForModel(model, storedLevel ?? "")
-        );
+        setReasoningLevel(validReasoningForModel(model, storedLevel ?? ""));
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
@@ -159,11 +157,11 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
 
         <Button
           type="submit"
+          size="icon"
           disabled={!canSubmit || isPending}
-          className="ml-auto"
+          className="ml-auto rounded-full"
         >
-          {isPending ? <Loader2 className="animate-spin" /> : <ArrowRight />}
-          <span>{isPending ? "Creating…" : "Send"}</span>
+          {isPending ? <Loader2 className="animate-spin" /> : <ArrowUp />}
         </Button>
       </div>
 

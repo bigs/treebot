@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { getChatById } from "@/db/queries";
 import { getModels, type ModelParams } from "@/lib/models";
 import { ChatView } from "./chat-view";
+import type { UIMessage } from "ai";
 
 export default async function ChatDetailPage({
   params,
@@ -23,9 +24,7 @@ export default async function ChatDetailPage({
   const storedParams = chat.modelParams as ModelParams | null;
   const reasoningLevels = modelInfo?.reasoningLevels ?? [];
   const initialReasoningLevel =
-    storedParams?.reasoning_effort ??
-    modelInfo?.defaultReasoningLevel ??
-    "";
+    storedParams?.reasoning_effort ?? modelInfo?.defaultReasoningLevel ?? "";
 
   return (
     <ChatView
@@ -33,6 +32,8 @@ export default async function ChatDetailPage({
       modelName={modelInfo?.name ?? chat.model}
       reasoningLevels={reasoningLevels}
       initialReasoningLevel={initialReasoningLevel}
+      initialMessages={chat.messages as UIMessage[]}
+      initialTitle={chat.title ?? undefined}
     />
   );
 }
