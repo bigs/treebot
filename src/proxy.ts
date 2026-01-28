@@ -5,6 +5,7 @@ import { jwtVerify } from "jose";
 const PUBLIC_PATHS = ["/login", "/register", "/onboarding"];
 
 function isPublicPath(pathname: string) {
+  if (pathname === "/") return true;
   return PUBLIC_PATHS.some(
     (p) => pathname === p || pathname.startsWith(p + "/")
   );
