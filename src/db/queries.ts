@@ -61,6 +61,18 @@ export function upsertApiKey(
     .run();
 }
 
+export function getUserById(id: number) {
+  return db.select().from(users).where(eq(users.id, id)).get();
+}
+
+export function updateUserPassword(userId: number, hashedPassword: string) {
+  return db
+    .update(users)
+    .set({ password: hashedPassword })
+    .where(eq(users.id, userId))
+    .run();
+}
+
 export function getApiKeysByUser(userId: number) {
   return db
     .select({ platform: apiKeys.platform, updatedAt: apiKeys.updatedAt })

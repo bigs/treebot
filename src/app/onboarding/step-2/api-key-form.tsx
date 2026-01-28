@@ -15,7 +15,13 @@ const FIELDS = [
   { name: "openai", label: "OpenAI" },
 ] as const;
 
-export function ApiKeyForm({ savedPlatforms }: { savedPlatforms: string[] }) {
+export function ApiKeyForm({
+  savedPlatforms,
+  showContinue = true,
+}: {
+  savedPlatforms: string[];
+  showContinue?: boolean;
+}) {
   const router = useRouter();
   const [editing, setEditing] = useState<Record<string, boolean>>({});
 
@@ -102,14 +108,16 @@ export function ApiKeyForm({ savedPlatforms }: { savedPlatforms: string[] }) {
           {pending ? "Saving..." : "Save"}
         </Button>
       </form>
-      <Button
-        variant="outline"
-        className="w-full"
-        disabled={!hasSaved}
-        onClick={() => router.push("/")}
-      >
-        Continue
-      </Button>
+      {showContinue && (
+        <Button
+          variant="outline"
+          className="w-full"
+          disabled={!hasSaved}
+          onClick={() => router.push("/home")}
+        >
+          Continue
+        </Button>
+      )}
     </div>
   );
 }

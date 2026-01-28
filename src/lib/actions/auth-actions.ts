@@ -84,7 +84,7 @@ export async function login(
     isAdmin: user.isAdmin,
   });
 
-  redirect("/");
+  redirect("/home");
 }
 
 export async function register(
@@ -137,7 +137,7 @@ export async function register(
     isAdmin: user.isAdmin,
   });
 
-  redirect("/");
+  redirect("/home");
 }
 
 export async function logout(): Promise<void> {

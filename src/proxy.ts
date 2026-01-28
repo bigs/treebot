@@ -5,7 +5,6 @@ import { jwtVerify } from "jose";
 const PUBLIC_PATHS = ["/login", "/register", "/onboarding"];
 
 function isPublicPath(pathname: string) {
-  if (pathname === "/") return true;
   return PUBLIC_PATHS.some(
     (p) => pathname === p || pathname.startsWith(p + "/")
   );
@@ -38,7 +37,7 @@ export async function proxy(request: NextRequest) {
 
   // Logged-in users hitting auth pages → redirect home
   if (loggedIn && isAuthPath(pathname)) {
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(new URL("/home", request.url));
   }
 
   // Public paths → allow through
