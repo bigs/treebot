@@ -1,6 +1,7 @@
 import { eq, count, isNull, and, desc, inArray } from "drizzle-orm";
 import { db } from ".";
 import { users, inviteCodes, apiKeys, chats, type Platform } from "./schema";
+import type { ModelParams } from "@/lib/models";
 
 export function getUserCount() {
   const [row] = db.select({ count: count() }).from(users).all();
@@ -107,12 +108,28 @@ export function createChat(
   userId: number,
   provider: Platform,
   model: string,
-  messages: unknown[]
+  messages: unknown[],
+  modelParams?: ModelParams
 ) {
   return db
     .insert(chats)
-    .values({ userId, provider, model, messages })
+    .values({ userId, provider, model, messages, modelParams })
     .returning({ id: chats.id })
+    .get();
+}
+
+export function getChatById(chatId: string, userId: number) {
+  return db
+    .select({
+      id: chats.id,
+      model: chats.model,
+      provider: chats.provider,
+      modelParams: chats.modelParams,
+      messages: chats.messages,
+      title: chats.title,
+    })
+    .from(chats)
+    .where(and(eq(chats.id, chatId), eq(chats.userId, userId)))
     .get();
 }
 

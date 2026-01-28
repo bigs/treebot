@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { createChat, deleteChatWithChildren } from "@/db/queries";
 import type { Platform } from "@/db/schema";
+import type { ModelParams } from "@/lib/models";
 
 const VALID_PLATFORMS: Platform[] = ["google", "openai"];
 
@@ -33,11 +34,15 @@ export async function createChatAction(input: {
   }
 
   const messages = [{ role: "user" as const, content: message }];
+  const modelParams: ModelParams | undefined = input.reasoningLevel
+    ? { reasoning_effort: input.reasoningLevel }
+    : undefined;
   const chat = createChat(
     session.sub,
     provider as Platform,
     input.model,
-    messages
+    messages,
+    modelParams
   );
 
   revalidatePath("/", "layout");

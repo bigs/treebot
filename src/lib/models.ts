@@ -1,5 +1,9 @@
 import type { Platform } from "@/db/schema";
 
+export interface ModelParams {
+  reasoning_effort?: string;
+}
+
 export interface ReasoningOption {
   value: string;
   label: string;

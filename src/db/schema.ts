@@ -48,6 +48,7 @@ export const chats = sqliteTable("chats", {
   parentId: text("parent_id"),
   provider: text("provider", { enum: ["google", "openai"] }).notNull(),
   model: text("model").notNull(),
+  modelParams: text("model_params", { mode: "json" }),
   title: text("title"),
   messages: text("messages", { mode: "json" }).notNull(),
   createdAt: text("created_at")
