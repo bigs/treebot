@@ -40,9 +40,5 @@ export function redeemInviteCode(codeId: number, userId: number) {
 }
 
 export function createInviteCode(code: string, createdBy: number) {
-  return db
-    .insert(inviteCodes)
-    .values({ code, createdBy })
-    .returning()
-    .get();
+  return db.insert(inviteCodes).values({ code, createdBy }).returning().get();
 }

@@ -36,7 +36,7 @@ export function CreateAdminForm() {
         />
       </div>
       {state?.error && (
-        <p className="text-sm text-destructive">{state.error}</p>
+        <p className="text-destructive text-sm">{state.error}</p>
       )}
       <Button type="submit" className="w-full" disabled={pending}>
         {pending ? "Creating..." : "Create Admin Account"}

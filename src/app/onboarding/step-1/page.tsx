@@ -10,7 +10,7 @@ export default function OnboardingStep1() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-sm">
         Create the admin account to get started.
       </p>
       <CreateAdminForm />

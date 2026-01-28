@@ -41,14 +41,14 @@ export function RegisterForm() {
         />
       </div>
       {state?.error && (
-        <p className="text-sm text-destructive">{state.error}</p>
+        <p className="text-destructive text-sm">{state.error}</p>
       )}
       <Button type="submit" className="w-full" disabled={pending}>
         {pending ? "Registering..." : "Register"}
       </Button>
-      <p className="text-center text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-center text-sm">
         Already have an account?{" "}
-        <Link href="/login" className="underline hover:text-foreground">
+        <Link href="/login" className="hover:text-foreground underline">
           Sign in
         </Link>
       </p>

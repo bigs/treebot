@@ -10,12 +10,12 @@ export default async function OnboardingStep2() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-sm">
         Configure your API keys for AI providers. You can set these in your{" "}
-        <code className="rounded bg-muted px-1 py-0.5 text-xs">.env.local</code>{" "}
+        <code className="bg-muted rounded px-1 py-0.5 text-xs">.env.local</code>{" "}
         file.
       </p>
-      <div className="rounded border border-dashed p-4 text-center text-sm text-muted-foreground">
+      <div className="text-muted-foreground rounded border border-dashed p-4 text-center text-sm">
         API key configuration coming soon.
       </div>
       <ContinueButton />

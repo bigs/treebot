@@ -24,7 +24,7 @@ export async function createSession(payload: SessionPayload) {
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime(`${EXPIRY_SECONDS}s`)
+    .setExpirationTime(`${String(EXPIRY_SECONDS)}s`)
     .sign(getSecret());
 
   const cookieStore = await cookies();

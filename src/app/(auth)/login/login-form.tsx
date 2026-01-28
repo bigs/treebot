@@ -17,12 +17,7 @@ export function LoginForm() {
     <form action={action} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="username">Username</Label>
-        <Input
-          id="username"
-          name="username"
-          required
-          autoComplete="username"
-        />
+        <Input id="username" name="username" required autoComplete="username" />
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
@@ -35,14 +30,14 @@ export function LoginForm() {
         />
       </div>
       {state?.error && (
-        <p className="text-sm text-destructive">{state.error}</p>
+        <p className="text-destructive text-sm">{state.error}</p>
       )}
       <Button type="submit" className="w-full" disabled={pending}>
         {pending ? "Signing in..." : "Sign In"}
       </Button>
-      <p className="text-center text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-center text-sm">
         Have an invite code?{" "}
-        <Link href="/register" className="underline hover:text-foreground">
+        <Link href="/register" className="hover:text-foreground underline">
           Register
         </Link>
       </p>

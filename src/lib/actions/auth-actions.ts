@@ -119,10 +119,10 @@ export async function register(
 
   const user = db.transaction(() => {
     // Re-check invite hasn't been redeemed in the meantime
-    const freshInvite = getInviteByCode(inviteCode!);
+    const freshInvite = getInviteByCode(inviteCode);
     if (!freshInvite) return null;
 
-    const newUser = createUser(username!, hash, false);
+    const newUser = createUser(username, hash, false);
     redeemInviteCode(freshInvite.id, newUser.id);
     return newUser;
   });
