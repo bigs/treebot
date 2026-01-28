@@ -25,17 +25,9 @@ export function buildProviderOptions(
   if (!reasoningEffort) return undefined;
 
   if (platform === "google") {
-    const levelMap: Record<string, string> = {
-      minimal: "MINIMAL",
-      low: "LOW",
-      medium: "MEDIUM",
-      high: "HIGH",
-    };
-    const thinkingLevel = levelMap[reasoningEffort];
-    if (!thinkingLevel) return undefined;
     return {
       google: {
-        thinkingConfig: { thinkingLevel },
+        thinkingConfig: { thinkingLevel: reasoningEffort },
       },
     };
   }

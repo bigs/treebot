@@ -34,19 +34,66 @@ export function ChatView({
   initialMessages,
   initialTitle,
 }: ChatViewProps) {
-  const router = useRouter();
   const [reasoningLevel, setReasoningLevel] = useState(initialReasoningLevel);
   const [title, setTitle] = useState(initialTitle);
+
+  // Sync title from server after router.refresh()
+  useEffect(() => {
+    setTitle(initialTitle);
+  }, [initialTitle]);
+
+  return (
+    <div className="flex h-screen flex-col">
+      <header className="border-b px-4 py-3">
+        <div className="flex items-center gap-3">
+          <h1 className="text-sm font-medium">{title ?? modelName}</h1>
+          {reasoningLevels.length > 0 && (
+            <Select value={reasoningLevel} onValueChange={setReasoningLevel}>
+              <SelectTrigger className="w-[160px]" size="sm">
+                <SelectValue placeholder="Reasoning" />
+              </SelectTrigger>
+              <SelectContent>
+                {reasoningLevels.map((level) => (
+                  <SelectItem key={level.value} value={level.value}>
+                    {level.label} reasoning
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      </header>
+
+      <ChatBody chatId={chatId} initialMessages={initialMessages} />
+    </div>
+  );
+}
+
+/**
+ * Separated from ChatView so that useChat's internal useSyncExternalStore
+ * hooks don't shift Radix Select's useId()-generated aria attributes,
+ * which caused a hydration mismatch.
+ */
+function ChatBody({
+  chatId,
+  initialMessages,
+}: {
+  chatId: string;
+  initialMessages: UIMessage[];
+}) {
+  const router = useRouter();
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const autoTriggeredRef = useRef(false);
 
+  const [transport] = useState(
+    () => new DefaultChatTransport({ api: `/chats/${chatId}/stream` })
+  );
+
   const chat = useChat({
     id: chatId,
-    transport: new DefaultChatTransport({
-      api: `/chats/${chatId}/stream`,
-    }),
+    transport,
     messages: initialMessages,
     onFinish: () => {
       router.refresh();
@@ -65,11 +112,6 @@ export function ChatView({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
   }, []);
-
-  // Sync title from server
-  useEffect(() => {
-    setTitle(initialTitle);
-  }, [initialTitle]);
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -94,27 +136,7 @@ export function ChatView({
   }
 
   return (
-    <div className="flex h-screen flex-col">
-      <header className="border-b px-4 py-3">
-        <div className="flex items-center gap-3">
-          <h1 className="text-sm font-medium">{title ?? modelName}</h1>
-          {reasoningLevels.length > 0 && (
-            <Select value={reasoningLevel} onValueChange={setReasoningLevel}>
-              <SelectTrigger className="w-[160px]" size="sm">
-                <SelectValue placeholder="Reasoning" />
-              </SelectTrigger>
-              <SelectContent>
-                {reasoningLevels.map((level) => (
-                  <SelectItem key={level.value} value={level.value}>
-                    {level.label} reasoning
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
-      </header>
-
+    <>
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl px-4 py-6">
           <div className="space-y-6">
@@ -172,7 +194,7 @@ export function ChatView({
           )}
         </form>
       </div>
-    </div>
+    </>
   );
 }
 
