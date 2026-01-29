@@ -31,8 +31,9 @@ function validReasoningForModel(
 }
 
 export function NewChatForm({ models }: { models: ModelInfo[] }) {
+  const firstModel = models.length > 0 ? models[0] : null;
   const initialDefaultModel =
-    models.find((m) => m.id === DEFAULT_MODEL_ID) ?? models[0] ?? null;
+    models.find((m) => m.id === DEFAULT_MODEL_ID) ?? firstModel;
   const initialDefaultReasoning = initialDefaultModel
     ? validReasoningForModel(initialDefaultModel, DEFAULT_REASONING)
     : "";
@@ -55,7 +56,7 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
       ? models.find((m) => m.id === storedId)
       : null;
     const fallbackModel =
-      models.find((m) => m.id === DEFAULT_MODEL_ID) ?? models[0] ?? null;
+      models.find((m) => m.id === DEFAULT_MODEL_ID) ?? firstModel;
     const resolvedModel = storedModel ?? fallbackModel;
     if (!resolvedModel) return;
 

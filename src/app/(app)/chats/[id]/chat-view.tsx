@@ -213,6 +213,11 @@ function MessageBubble({ message }: { message: UIMessage }) {
     (p): p is { type: "reasoning"; text: string } => p.type === "reasoning"
   );
 
+  const isStreaming = message.parts.some(
+    (part): part is { state?: "streaming" | "done" } =>
+      "state" in part && part.state === "streaming"
+  );
+
   const reasoningContent = reasoningParts
     .map((p) => p.text)
     .join("\n\n");
@@ -222,21 +227,33 @@ function MessageBubble({ message }: { message: UIMessage }) {
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
 
-  const latestReasoningPart = reasoningParts.at(-1)?.text ?? "";
-  const latestReasoningLines = latestReasoningPart
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
+  const isBoldOnly = (line: string) => /^\*\*[^*]+\*\*$/.test(line);
+
+  const reasoningBlocks: Array<{ title?: string; body: string[] }> = [];
+  for (const line of reasoningLines) {
+    if (isBoldOnly(line)) {
+      reasoningBlocks.push({ title: line, body: [] });
+      continue;
+    }
+    const current = reasoningBlocks.at(-1);
+    if (!current) {
+      reasoningBlocks.push({ body: [line] });
+      continue;
+    }
+    current.body.push(line);
+  }
+
+  const previewBlock = isStreaming
+    ? reasoningBlocks.at(-1)
+    : reasoningBlocks.at(0);
 
   const previewLine = (() => {
-    const titleLine = latestReasoningLines[0];
-    if (!titleLine) return undefined;
-    const isBoldOnly = /^\*\*[^*]+\*\*$/.test(titleLine);
-    const bodyLine = latestReasoningLines[1];
-    if (isBoldOnly && bodyLine) {
-      return `${titleLine}: ${bodyLine}`;
+    if (!previewBlock) return undefined;
+    const bodyLine = previewBlock.body[0];
+    if (previewBlock.title && bodyLine) {
+      return `${previewBlock.title}: ${bodyLine}`;
     }
-    return titleLine;
+    return previewBlock.title ?? bodyLine;
   })();
 
   if (isUser) {
