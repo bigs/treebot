@@ -3,19 +3,39 @@ import { createOpenAI } from "@ai-sdk/openai";
 import type { LanguageModel, JSONValue } from "ai";
 import type { Platform } from "@/db/schema";
 
-export const SYSTEM_PROMPT = "You are a helpful assistant.";
+export function getSystemPrompt(now: Date = new Date()): string {
+  return `You are a helpful assistant. The current date and time is: ${now.toISOString()}`;
+}
+
+function createProvider(platform: Platform, apiKey: string) {
+  if (platform === "google") {
+    return createGoogleGenerativeAI({ apiKey });
+  }
+  return createOpenAI({ apiKey });
+}
 
 export function createModel(
   platform: Platform,
   apiKey: string,
   modelId: string
 ): LanguageModel {
+  const provider = createProvider(platform, apiKey);
+  return provider(modelId);
+}
+
+export function buildTools(
+  platform: Platform,
+  apiKey: string
+): Record<string, unknown> {
+  const provider = createProvider(platform, apiKey);
   if (platform === "google") {
-    const google = createGoogleGenerativeAI({ apiKey });
-    return google(modelId);
+    return {
+      google_search: provider.tools.googleSearch({}),
+    };
   }
-  const openai = createOpenAI({ apiKey });
-  return openai(modelId);
+  return {
+    web_search: provider.tools.webSearch({}),
+  };
 }
 
 export function buildProviderOptions(

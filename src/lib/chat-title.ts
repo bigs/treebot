@@ -2,7 +2,7 @@ import { generateText, type UIMessage } from "ai";
 import { revalidatePath } from "next/cache";
 import { getApiKeyByUserAndPlatform, updateChatTitle } from "@/db/queries";
 import { decrypt } from "@/lib/crypto";
-import { buildProviderOptions, createModel } from "@/lib/ai";
+import { buildProviderOptions, buildTools, createModel } from "@/lib/ai";
 import type { Platform } from "@/db/schema";
 
 type TitleInput = {
@@ -45,6 +45,7 @@ export async function generateChatTitle({
   const keyRow = getApiKeyByUserAndPlatform(userId, platform);
   if (!keyRow) return;
   const apiKey = decrypt(keyRow.encryptedKey);
+  const tools = buildTools(platform, apiKey);
 
   let titleModel;
   let titleProviderOptions;
@@ -66,6 +67,7 @@ export async function generateChatTitle({
   const { text: title } = await generateText({
     model: titleModel,
     providerOptions: titleProviderOptions,
+    tools,
     prompt: `Generate a short title (2-6 words) for this conversation. Return ONLY the title, no quotes or punctuation.\n\n${conversationSummary}`,
   });
 

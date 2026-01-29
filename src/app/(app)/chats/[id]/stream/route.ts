@@ -6,7 +6,7 @@ import {
   updateChatMessages,
 } from "@/db/queries";
 import { decrypt } from "@/lib/crypto";
-import { createModel, buildProviderOptions, SYSTEM_PROMPT } from "@/lib/ai";
+import { buildProviderOptions, buildTools, createModel, getSystemPrompt } from "@/lib/ai";
 import { generateChatTitle } from "@/lib/chat-title";
 import type { Platform } from "@/db/schema";
 import type { ModelParams } from "@/lib/models";
@@ -40,6 +40,7 @@ export async function POST(
   const apiKey = decrypt(keyRow.encryptedKey);
 
   const model = createModel(platform, apiKey, chat.model);
+  const tools = buildTools(platform, apiKey);
 
   const storedParams = chat.modelParams as ModelParams | null;
   const providerOptions = buildProviderOptions(
@@ -51,9 +52,10 @@ export async function POST(
 
   const result = streamText({
     model,
-    system: SYSTEM_PROMPT,
+    system: getSystemPrompt(),
     messages: modelMessages,
     providerOptions,
+    tools,
     abortSignal: request.signal,
   });
 
