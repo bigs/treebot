@@ -41,7 +41,10 @@ function normalizeMathDelimiters(markdown: string) {
     const char = markdown[i];
     const atLineStart = i === 0 || markdown[i - 1] === "\n";
 
-    if (atLineStart && (markdown.startsWith("```", i) || markdown.startsWith("~~~", i))) {
+    if (
+      atLineStart &&
+      (markdown.startsWith("```", i) || markdown.startsWith("~~~", i))
+    ) {
       flushBuffer();
       const fence = markdown.startsWith("```", i) ? "```" : "~~~";
       const fenceStart = i;
@@ -50,7 +53,10 @@ function normalizeMathDelimiters(markdown: string) {
       if (i < markdown.length) i += 1;
 
       while (i < markdown.length) {
-        if ((i === 0 || markdown[i - 1] === "\n") && markdown.startsWith(fence, i)) {
+        if (
+          (i === 0 || markdown[i - 1] === "\n") &&
+          markdown.startsWith(fence, i)
+        ) {
           i += fence.length;
           while (i < markdown.length && markdown[i] !== "\n") i += 1;
           if (i < markdown.length) i += 1;
@@ -66,7 +72,10 @@ function normalizeMathDelimiters(markdown: string) {
     if (char === "`") {
       flushBuffer();
       let backtickCount = 1;
-      while (i + backtickCount < markdown.length && markdown[i + backtickCount] === "`") {
+      while (
+        i + backtickCount < markdown.length &&
+        markdown[i + backtickCount] === "`"
+      ) {
         backtickCount += 1;
       }
       const start = i;
@@ -124,9 +133,9 @@ export function ChatView({
   const pollEligibleRef = useRef(
     Boolean(
       initialParentId &&
-        initialCreatedAt &&
-        initialUpdatedAt &&
-        initialCreatedAt === initialUpdatedAt
+      initialCreatedAt &&
+      initialUpdatedAt &&
+      initialCreatedAt === initialUpdatedAt
     )
   );
 
@@ -219,7 +228,7 @@ export function ChatView({
       <header className="border-b px-4 py-3">
         <div className="flex items-center gap-3">
           <h1 className="text-sm font-medium">{title ?? modelName}</h1>
-          <span className="rounded-full border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+          <span className="bg-muted text-muted-foreground rounded-full border px-2 py-0.5 text-xs">
             {modelName}
           </span>
           {mounted && reasoningLevels.length > 0 && (
@@ -264,10 +273,11 @@ function ChatBody({
 }) {
   const router = useRouter();
   const [input, setInput] = useState("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const lastUserMessageRef = useRef<HTMLDivElement>(null);
   const autoTriggeredRef = useRef(false);
-  const scrollContainerRef = useRef<HTMLElement | null>(null);
-  const initialScrollRef = useRef(true);
+  const pendingScrollRef = useRef(false);
   const [forkingIndex, setForkingIndex] = useState<number | null>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
@@ -299,19 +309,42 @@ function ChatBody({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
   }, []);
 
-  // Auto-scroll on new messages
+  // Scroll user message to top when a new message is sent
   useEffect(() => {
+    if (!pendingScrollRef.current) return;
     const container = scrollContainerRef.current;
-    if (!container) return;
-    const behavior = initialScrollRef.current ? "auto" : "smooth";
-    container.scrollTo({ top: container.scrollHeight, behavior });
-    initialScrollRef.current = false;
+    const userMessage = lastUserMessageRef.current;
+    if (!container || !userMessage) return;
+
+    pendingScrollRef.current = false;
+    const containerRect = container.getBoundingClientRect();
+    const messageRect = userMessage.getBoundingClientRect();
+    const offsetFromTop = 10;
+    const scrollTop =
+      container.scrollTop +
+      (messageRect.top - containerRect.top) -
+      offsetFromTop;
+    container.scrollTo({ top: scrollTop, behavior: "smooth" });
   }, [chat.messages]);
+
+  // Clear min-height when streaming ends
+  useEffect(() => {
+    if (!isActive && contentRef.current) {
+      contentRef.current.style.minHeight = "";
+    }
+  }, [isActive]);
 
   function handleSubmit(e: React.SyntheticEvent) {
     e.preventDefault();
     const trimmed = input.trim();
     if (!trimmed || isActive) return;
+    pendingScrollRef.current = true;
+    // Expand scroll container by viewport height to allow scrolling user message to top
+    const content = contentRef.current;
+    if (content) {
+      const newHeight = content.scrollHeight + window.innerHeight;
+      content.style.minHeight = `${String(newHeight)}px`;
+    }
     void chat.sendMessage({ text: trimmed });
     setInput("");
   }
@@ -368,24 +401,31 @@ function ChatBody({
     }
   }
 
+  // Find index of last user message for scroll targeting
+  const lastUserIndex = chat.messages.reduce(
+    (acc, msg, idx) => (msg.role === "user" ? idx : acc),
+    -1
+  );
+
   return (
     <>
-      <main
-        ref={scrollContainerRef}
-        className="min-h-0 flex-1 overflow-y-auto"
-      >
-        <div className="mx-auto max-w-3xl px-4 py-6">
+      <main ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto">
+        <div ref={contentRef} className="mx-auto max-w-3xl px-4 py-6">
           <div className="space-y-6">
             {chat.messages.map((message, index) => (
-              <MessageBubble
+              <div
                 key={message.id || `${message.role}-${String(index)}`}
-                message={message}
-                index={index}
-                isForking={forkingIndex === index}
-                isCopied={copiedIndex === index}
-                onFork={handleFork}
-                onCopy={handleCopy}
-              />
+                ref={index === lastUserIndex ? lastUserMessageRef : undefined}
+              >
+                <MessageBubble
+                  message={message}
+                  index={index}
+                  isForking={forkingIndex === index}
+                  isCopied={copiedIndex === index}
+                  onFork={handleFork}
+                  onCopy={handleCopy}
+                />
+              </div>
             ))}
             {chat.error && (
               <div className="text-destructive text-sm">
@@ -393,17 +433,16 @@ function ChatBody({
               </div>
             )}
           </div>
-          <div ref={messagesEndRef} />
         </div>
       </main>
 
       <div className="border-t px-4 py-3">
         <form
           onSubmit={handleSubmit}
-          className="mx-auto flex max-w-3xl items-end gap-2"
+          className="mx-auto flex max-w-3xl items-start gap-2"
         >
           <textarea
-            className="border-input bg-background placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex-1 resize-none overflow-y-auto rounded-lg border px-4 py-3 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
+            className="border-input bg-background placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex-1 resize-none overflow-y-auto rounded-lg border px-4 py-2.5 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
             rows={1}
             style={{ fieldSizing: "content", maxHeight: "140px" }}
             placeholder="Send a message..."
@@ -438,7 +477,6 @@ function ChatBody({
           )}
         </form>
       </div>
-
     </>
   );
 }
@@ -475,9 +513,7 @@ function MessageBubble({
       "state" in part && part.state === "streaming"
   );
 
-  const reasoningContent = reasoningParts
-    .map((p) => p.text)
-    .join("\n\n");
+  const reasoningContent = reasoningParts.map((p) => p.text).join("\n\n");
 
   const normalizedReasoningContent = normalizeMathDelimiters(reasoningContent);
 
@@ -535,8 +571,8 @@ function MessageBubble({
     <div className="flex justify-start">
       <div className="max-w-[80%] space-y-2">
         {reasoningContent.trim().length > 0 && (
-          <details className="group rounded-lg border bg-muted/30">
-            <summary className="cursor-pointer list-none px-3 py-2 text-xs text-muted-foreground">
+          <details className="group bg-muted/30 rounded-lg border">
+            <summary className="text-muted-foreground cursor-pointer list-none px-3 py-2 text-xs">
               <div className="flex items-center gap-2">
                 <span
                   className="arrow text-muted-foreground/70 flex h-5 w-5 items-center justify-center text-[28px] leading-none transition-transform duration-150"
@@ -558,7 +594,7 @@ function MessageBubble({
                 </span>
               </div>
             </summary>
-            <div className="border-t px-3 py-2 text-xs text-muted-foreground">
+            <div className="text-muted-foreground border-t px-3 py-2 text-xs">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkMath]}
                 rehypePlugins={[rehypeKatex]}
@@ -579,10 +615,10 @@ function MessageBubble({
           </div>
         )}
         {isAssistant && (
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="text-muted-foreground flex items-center gap-3 text-xs">
             <button
               type="button"
-              className="inline-flex cursor-pointer items-center gap-1 hover:text-foreground disabled:cursor-not-allowed"
+              className="hover:text-foreground inline-flex cursor-pointer items-center gap-1 disabled:cursor-not-allowed"
               onClick={() => onFork(index)}
               disabled={isForking}
             >
@@ -592,14 +628,14 @@ function MessageBubble({
             <span className="relative inline-flex">
               <button
                 type="button"
-                className="inline-flex cursor-pointer items-center gap-1 hover:text-foreground"
+                className="hover:text-foreground inline-flex cursor-pointer items-center gap-1"
                 onClick={() => onCopy(textContent, index)}
               >
                 <Copy className="size-3.5" />
                 Copy
               </button>
               {isCopied && (
-                <span className="pointer-events-none absolute left-full ml-2 top-1/2 -translate-y-1/2 rounded border bg-background px-2 py-1 text-[10px] text-foreground shadow">
+                <span className="bg-background text-foreground pointer-events-none absolute top-1/2 left-full ml-2 -translate-y-1/2 rounded border px-2 py-1 text-[10px] shadow">
                   Copied
                 </span>
               )}
