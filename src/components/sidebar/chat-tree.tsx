@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronRight, Ellipsis, MessageSquare, Trash2 } from "lucide-react";
+import { ChevronRight, Ellipsis, MessageSquare, Pencil, Trash2 } from "lucide-react";
 import { useSidebar } from "./sidebar-context";
-import { deleteChatAction } from "@/lib/actions/chat-actions";
+import { deleteChatAction, renameChatAction } from "@/lib/actions/chat-actions";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
 import type { ChatNode } from "@/lib/chat-tree";
 
 function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
@@ -34,6 +35,8 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState(node.title);
 
   function collectIds(n: ChatNode): string[] {
     return [n.id, ...n.children.flatMap(collectIds)];
@@ -50,6 +53,25 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
     if (isViewingDeleted) {
       router.push("/chats/new");
     }
+  }
+
+  useEffect(() => {
+    if (!renameOpen) return;
+    setRenameValue(node.title);
+  }, [node.title, renameOpen]);
+
+  async function handleRename() {
+    const trimmed = renameValue.trim();
+    if (!trimmed) return;
+    if (trimmed === node.title) {
+      setRenameOpen(false);
+      return;
+    }
+    const result = await renameChatAction(node.id, trimmed);
+    if (!("error" in result)) {
+      router.refresh();
+    }
+    setRenameOpen(false);
   }
 
   return (
@@ -95,6 +117,15 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" side="right">
             <DropdownMenuItem
+              onClick={() => {
+                setDropdownOpen(false);
+                setRenameOpen(true);
+              }}
+            >
+              <Pencil className="size-4" />
+              Rename
+            </DropdownMenuItem>
+            <DropdownMenuItem
               variant="destructive"
               onClick={() => {
                 setAlertOpen(true);
@@ -123,6 +154,36 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
               onClick={() => void handleDelete()}
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={renameOpen} onOpenChange={setRenameOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rename chat</AlertDialogTitle>
+            <AlertDialogDescription>
+              Choose a new name for this chat.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div>
+            <Input
+              value={renameValue}
+              onChange={(event) => setRenameValue(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void handleRename();
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void handleRename()}>
+              Save
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
-import { createChat, deleteChatWithChildren } from "@/db/queries";
+import { createChat, deleteChatWithChildren, updateChatTitle } from "@/db/queries";
 import { generateChatTitle } from "@/lib/chat-title";
 import type { Platform } from "@/db/schema";
 import type { ModelParams } from "@/lib/models";
@@ -80,6 +80,30 @@ export async function deleteChatAction(
   }
 
   deleteChatWithChildren(chatId, session.sub);
+  revalidatePath("/", "layout");
+
+  return { success: true };
+}
+
+export async function renameChatAction(
+  chatId: string,
+  title: string
+): Promise<{ success: true } | { error: string }> {
+  const session = await getSession();
+  if (!session) {
+    return { error: "Not authenticated." };
+  }
+
+  if (!chatId) {
+    return { error: "Chat ID is required." };
+  }
+
+  const cleaned = title.trim();
+  if (!cleaned) {
+    return { error: "Chat title cannot be empty." };
+  }
+
+  updateChatTitle(chatId, session.sub, cleaned);
   revalidatePath("/", "layout");
 
   return { success: true };
