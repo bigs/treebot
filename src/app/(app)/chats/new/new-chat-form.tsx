@@ -31,72 +31,95 @@ function validReasoningForModel(
 }
 
 export function NewChatForm({ models }: { models: ModelInfo[] }) {
-  const firstModel = models.length > 0 ? models[0] : null;
-  const initialDefaultModel =
-    models.find((m) => m.id === DEFAULT_MODEL_ID) ?? firstModel;
-  const initialDefaultReasoning = initialDefaultModel
-    ? validReasoningForModel(initialDefaultModel, DEFAULT_REASONING)
-    : "";
-
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [message, setMessage] = useState("");
-  const [selectedModelId, setSelectedModelId] = useState(
-    initialDefaultModel?.id ?? ""
-  );
-  const [reasoningLevel, setReasoningLevel] = useState(
-    initialDefaultReasoning
-  );
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
 
-  // Hydrate from localStorage after mount to avoid SSR mismatch
-  useEffect(() => {
-    const storedId = localStorage.getItem(LS_MODEL_KEY);
-    const storedModel = storedId
-      ? models.find((m) => m.id === storedId)
-      : null;
-    const fallbackModel =
+  // We use a single state for the selected model and reasoning to keep them in sync
+  const [selection, setSelection] = useState<{
+    modelId: string;
+    reasoningLevel: string;
+  }>(() => {
+    const firstModel = models.length > 0 ? models[0] : null;
+    const defaultModel =
       models.find((m) => m.id === DEFAULT_MODEL_ID) ?? firstModel;
-    const resolvedModel = storedModel ?? fallbackModel;
-    if (!resolvedModel) return;
+    return {
+      modelId: defaultModel?.id ?? "",
+      reasoningLevel: defaultModel
+        ? validReasoningForModel(defaultModel, DEFAULT_REASONING)
+        : "",
+    };
+  });
 
-    setSelectedModelId(resolvedModel.id);
-    localStorage.setItem(LS_MODEL_KEY, resolvedModel.id);
+  // Hydrate from localStorage after mount
+  useEffect(() => {
+    const storedModelId = localStorage.getItem(LS_MODEL_KEY);
+    const storedReasoning = localStorage.getItem(LS_REASONING_KEY);
 
-    if (resolvedModel.reasoningLevels.length > 0) {
-      const storedLevel = storedModel
-        ? localStorage.getItem(LS_REASONING_KEY)
-        : DEFAULT_REASONING;
-      const next = validReasoningForModel(resolvedModel, storedLevel ?? "");
-      setReasoningLevel(next);
-      localStorage.setItem(LS_REASONING_KEY, next);
-    } else {
-      setReasoningLevel("");
+    const resolvedModel =
+      models.find((m) => m.id === storedModelId) ??
+      models.find((m) => m.id === DEFAULT_MODEL_ID) ??
+      (models.length > 0 ? models[0] : null);
+
+    if (resolvedModel) {
+      const effectiveReasoning = storedReasoning ?? DEFAULT_REASONING;
+      const finalReasoning = validReasoningForModel(
+        resolvedModel,
+        effectiveReasoning
+      );
+
+      setSelection({
+        modelId: resolvedModel.id,
+        reasoningLevel: finalReasoning,
+      });
+
+      // Ensure localStorage is in sync with what we just resolved
+      localStorage.setItem(LS_MODEL_KEY, resolvedModel.id);
+      if (finalReasoning) {
+        localStorage.setItem(LS_REASONING_KEY, finalReasoning);
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
-  }, []);
+  }, [models]);
 
-  const selectedModel = models.find((m) => m.id === selectedModelId);
+  const selectedModel = models.find((m) => m.id === selection.modelId);
   const showReasoning =
     selectedModel != null && selectedModel.reasoningLevels.length > 0;
 
-  const handleModelChange = useCallback(
-    (value: string) => {
-      setSelectedModelId(value);
-      localStorage.setItem(LS_MODEL_KEY, value);
+  // Fallback for reasoningLevel if it's empty but shouldn't be
+  useEffect(() => {
+    if (showReasoning && selection.reasoningLevel === "" && selectedModel) {
+      const fallback = selectedModel.defaultReasoningLevel;
+      setSelection((prev) => ({
+        ...prev,
+        reasoningLevel: fallback,
+      }));
+      localStorage.setItem(LS_REASONING_KEY, fallback);
+    }
+  }, [showReasoning, selection.reasoningLevel, selectedModel]);
 
-      const newModel = models.find((m) => m.id === value);
-      const next = validReasoningForModel(newModel, reasoningLevel);
-      if (next !== reasoningLevel) {
-        setReasoningLevel(next);
-        localStorage.setItem(LS_REASONING_KEY, next);
+  const handleModelChange = useCallback(
+    (modelId: string) => {
+      const newModel = models.find((m) => m.id === modelId);
+      if (!newModel) return;
+
+      const storedPreference =
+        localStorage.getItem(LS_REASONING_KEY) ?? DEFAULT_REASONING;
+      const nextReasoning = validReasoningForModel(newModel, storedPreference);
+
+      setSelection({ modelId, reasoningLevel: nextReasoning });
+      localStorage.setItem(LS_MODEL_KEY, modelId);
+      // If we computed a valid reasoning level, make sure it's saved as the new preference
+      // or at least ensures the current state is consistent in storage
+      if (nextReasoning) {
+        localStorage.setItem(LS_REASONING_KEY, nextReasoning);
       }
     },
-    [models, reasoningLevel]
+    [models]
   );
 
   const handleReasoningChange = useCallback((value: string) => {
-    setReasoningLevel(value);
+    setSelection((prev) => ({ ...prev, reasoningLevel: value }));
     localStorage.setItem(LS_REASONING_KEY, value);
   }, []);
 
@@ -108,7 +131,7 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
     grouped.set(model.providerName, group);
   }
 
-  const canSubmit = selectedModelId !== "" && message.trim() !== "";
+  const canSubmit = selection.modelId !== "" && message.trim() !== "";
 
   function handleSubmit(e: React.SyntheticEvent) {
     e.preventDefault();
@@ -120,7 +143,7 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
         provider: selectedModel.provider,
         model: selectedModel.id,
         message: message.trim(),
-        reasoningLevel: showReasoning ? reasoningLevel : undefined,
+        reasoningLevel: showReasoning ? selection.reasoningLevel : undefined,
       });
 
       if ("error" in result) {
@@ -150,7 +173,7 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
       />
 
       <div className="flex flex-wrap items-center gap-2">
-        <Select value={selectedModelId} onValueChange={handleModelChange}>
+        <Select value={selection.modelId} onValueChange={handleModelChange}>
           <SelectTrigger className="w-[220px]">
             <SelectValue placeholder="Select a model" />
           </SelectTrigger>
@@ -169,7 +192,11 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
         </Select>
 
         {showReasoning && (
-          <Select value={reasoningLevel} onValueChange={handleReasoningChange}>
+          <Select
+            key={selection.modelId}
+            value={selection.reasoningLevel}
+            onValueChange={handleReasoningChange}
+          >
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Reasoning" />
             </SelectTrigger>
