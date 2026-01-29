@@ -16,6 +16,7 @@ import { CheckIcon, CopyIcon } from "lucide-react";
 
 import { SyntaxHighlighter } from "@/components/assistant-ui/shiki-highlighter";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
+import { copyToClipboard } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
 import { normalizeMathDelimiters } from "@/lib/markdown";
 
@@ -60,33 +61,16 @@ const useCopyToClipboard = ({
 } = {}) => {
   const [isCopied, setIsCopied] = useState<boolean>(false);
 
-  const copyToClipboard = async (value: string) => {
+  const copy = async (value: string) => {
     if (!value) return;
-
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- clipboard may be undefined in non-secure contexts
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(value);
-      } else {
-        // Fallback for non-secure contexts
-        const textarea = document.createElement("textarea");
-        textarea.value = value;
-        textarea.style.position = "fixed";
-        textarea.style.opacity = "0";
-        document.body.appendChild(textarea);
-        textarea.select();
-        // eslint-disable-next-line @typescript-eslint/no-deprecated -- fallback for non-secure contexts
-        document.execCommand("copy");
-        document.body.removeChild(textarea);
-      }
+    const success = await copyToClipboard(value);
+    if (success) {
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), copiedDuration);
-    } catch {
-      console.error("Failed to copy to clipboard");
     }
   };
 
-  return { isCopied, copyToClipboard };
+  return { isCopied, copyToClipboard: copy };
 };
 
 const defaultComponents = memoizeMarkdownComponents({

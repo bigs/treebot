@@ -11,6 +11,7 @@ import {
 import { ToolFallback } from "@/components/assistant-ui/tool-fallback";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { Button } from "@/components/ui/button";
+import { copyToClipboard } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
 import {
   ActionBarMorePrimitive,
@@ -318,29 +319,6 @@ const AssistantMessage: FC = () => {
     </MessagePrimitive.Root>
   );
 };
-
-async function copyToClipboard(text: string): Promise<boolean> {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- clipboard may be undefined in non-secure contexts
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-    // Fallback for non-secure contexts
-    const textarea = document.createElement("textarea");
-    textarea.value = text;
-    textarea.style.position = "fixed";
-    textarea.style.opacity = "0";
-    document.body.appendChild(textarea);
-    textarea.select();
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- fallback for non-secure contexts
-    document.execCommand("copy");
-    document.body.removeChild(textarea);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 function getMessageText(content: readonly unknown[]): string {
   return content

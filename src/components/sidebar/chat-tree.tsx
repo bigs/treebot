@@ -45,7 +45,7 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
   async function handleDelete() {
     const idsToDelete = new Set(collectIds(node));
     const isViewingDeleted =
-      pathname.startsWith("/chats/") &&
+      pathname?.startsWith("/chats/") &&
       idsToDelete.has(pathname.split("/chats/")[1]);
 
     await deleteChatAction(node.id);
@@ -206,7 +206,7 @@ export function ChatTree({ nodes }: { nodes: ChatNode[] }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!pathname.startsWith("/chats/")) return;
+    if (!pathname?.startsWith("/chats/")) return;
     const activeId = pathname.split("/chats/")[1];
     if (!activeId) return;
 
