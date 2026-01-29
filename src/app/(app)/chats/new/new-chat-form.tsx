@@ -18,6 +18,8 @@ import type { ModelInfo } from "@/lib/models";
 
 const LS_MODEL_KEY = "treebot:last-model";
 const LS_REASONING_KEY = "treebot:last-reasoning";
+const DEFAULT_MODEL_ID = "gemini-3-pro-preview";
+const DEFAULT_REASONING = "high";
 
 function validReasoningForModel(
   model: ModelInfo | undefined,
@@ -45,6 +47,21 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
       if (model && model.reasoningLevels.length > 0) {
         const storedLevel = localStorage.getItem(LS_REASONING_KEY);
         setReasoningLevel(validReasoningForModel(model, storedLevel ?? ""));
+      }
+      return;
+    }
+
+    const defaultModel = models.find((m) => m.id === DEFAULT_MODEL_ID);
+    if (defaultModel) {
+      setSelectedModelId(defaultModel.id);
+      localStorage.setItem(LS_MODEL_KEY, defaultModel.id);
+      if (defaultModel.reasoningLevels.length > 0) {
+        const next = validReasoningForModel(
+          defaultModel,
+          DEFAULT_REASONING
+        );
+        setReasoningLevel(next);
+        localStorage.setItem(LS_REASONING_KEY, next);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
