@@ -31,11 +31,21 @@ function validReasoningForModel(
 }
 
 export function NewChatForm({ models }: { models: ModelInfo[] }) {
+  const initialDefaultModel =
+    models.find((m) => m.id === DEFAULT_MODEL_ID) ?? null;
+  const initialDefaultReasoning = initialDefaultModel
+    ? validReasoningForModel(initialDefaultModel, DEFAULT_REASONING)
+    : "";
+
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
-  const [selectedModelId, setSelectedModelId] = useState("");
-  const [reasoningLevel, setReasoningLevel] = useState("");
+  const [selectedModelId, setSelectedModelId] = useState(
+    initialDefaultModel?.id ?? ""
+  );
+  const [reasoningLevel, setReasoningLevel] = useState(
+    initialDefaultReasoning
+  );
   const [error, setError] = useState("");
 
   // Hydrate from localStorage after mount to avoid SSR mismatch
