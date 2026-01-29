@@ -59,6 +59,7 @@ export async function POST(
 
   return result.toUIMessageStreamResponse({
     originalMessages: uiMessages,
+    sendReasoning: true,
     onFinish: ({ messages }) => {
       updateChatMessages(chatId, session.sub, messages);
 

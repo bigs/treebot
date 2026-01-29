@@ -27,7 +27,7 @@ export function buildProviderOptions(
   if (platform === "google") {
     return {
       google: {
-        thinkingConfig: { thinkingLevel: reasoningEffort },
+        thinkingConfig: { thinkingLevel: reasoningEffort, includeThoughts: true },
       },
     };
   }
@@ -35,6 +35,7 @@ export function buildProviderOptions(
   return {
     openai: {
       reasoningEffort,
+      reasoningSummary: "auto",
     },
   };
 }

@@ -206,6 +206,18 @@ function MessageBubble({ message }: { message: UIMessage }) {
     .map((p) => p.text)
     .join("");
 
+  const reasoningContent = message.parts
+    .filter((p): p is { type: "reasoning"; text: string } =>
+      p.type === "reasoning"
+    )
+    .map((p) => p.text)
+    .join("");
+
+  const reasoningLine = reasoningContent
+    .split(/\r?\n/)
+    .find((line) => line.trim().length > 0)
+    ?.trim();
+
   if (isUser) {
     return (
       <div className="flex justify-end">
@@ -218,15 +230,34 @@ function MessageBubble({ message }: { message: UIMessage }) {
 
   return (
     <div className="flex justify-start">
-      <div className="max-w-[80%]">
-        <div className="prose prose-sm dark:prose-invert max-w-none">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm, remarkMath]}
-            rehypePlugins={[rehypeKatex]}
-          >
-            {textContent}
-          </ReactMarkdown>
-        </div>
+      <div className="max-w-[80%] space-y-2">
+        {reasoningContent.trim().length > 0 && (
+          <details className="rounded-lg border bg-muted/30">
+            <summary className="cursor-pointer list-none px-3 py-2 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-foreground/80">
+                  Reasoning
+                </span>
+                <span className="truncate">
+                  {reasoningLine ?? "Thinking…"}
+                </span>
+              </div>
+            </summary>
+            <div className="border-t px-3 py-2 text-xs text-muted-foreground whitespace-pre-wrap">
+              {reasoningContent}
+            </div>
+          </details>
+        )}
+        {textContent.trim().length > 0 && (
+          <div className="prose prose-sm dark:prose-invert max-w-none">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm, remarkMath]}
+              rehypePlugins={[rehypeKatex]}
+            >
+              {textContent}
+            </ReactMarkdown>
+          </div>
+        )}
       </div>
     </div>
   );
