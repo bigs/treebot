@@ -36,18 +36,23 @@ export function ChatView({
 }: ChatViewProps) {
   const [reasoningLevel, setReasoningLevel] = useState(initialReasoningLevel);
   const [title, setTitle] = useState(initialTitle);
+  const [mounted, setMounted] = useState(false);
 
   // Sync title from server after router.refresh()
   useEffect(() => {
     setTitle(initialTitle);
   }, [initialTitle]);
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <div className="flex h-screen flex-col">
       <header className="border-b px-4 py-3">
         <div className="flex items-center gap-3">
           <h1 className="text-sm font-medium">{title ?? modelName}</h1>
-          {reasoningLevels.length > 0 && (
+          {mounted && reasoningLevels.length > 0 && (
             <Select value={reasoningLevel} onValueChange={setReasoningLevel}>
               <SelectTrigger className="w-[160px]" size="sm">
                 <SelectValue placeholder="Reasoning" />
@@ -140,8 +145,11 @@ function ChatBody({
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl px-4 py-6">
           <div className="space-y-6">
-            {chat.messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
+            {chat.messages.map((message, index) => (
+              <MessageBubble
+                key={message.id || `${message.role}-${String(index)}`}
+                message={message}
+              />
             ))}
             {chat.error && (
               <div className="text-destructive text-sm">
