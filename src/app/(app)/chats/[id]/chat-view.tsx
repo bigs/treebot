@@ -89,7 +89,6 @@ function ChatBody({
   const router = useRouter();
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const autoTriggeredRef = useRef(false);
 
   const [transport] = useState(
@@ -122,15 +121,6 @@ function ChatBody({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chat.messages]);
-
-  // Auto-resize textarea
-  useEffect(() => {
-    const ta = textareaRef.current;
-    if (ta) {
-      ta.style.height = "auto";
-      ta.style.height = `${String(Math.min(ta.scrollHeight, 200))}px`;
-    }
-  }, [input]);
 
   function handleSubmit(e: React.SyntheticEvent) {
     e.preventDefault();
@@ -167,9 +157,9 @@ function ChatBody({
           className="mx-auto flex max-w-3xl items-end gap-2"
         >
           <textarea
-            ref={textareaRef}
-            className="border-input bg-background placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex-1 resize-none rounded-lg border px-4 py-3 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
+            className="border-input bg-background placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex-1 resize-none overflow-y-auto rounded-lg border px-4 py-3 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
             rows={1}
+            style={{ fieldSizing: "content", maxHeight: "140px" }}
             placeholder="Send a message..."
             value={input}
             onChange={(e) => setInput(e.target.value)}

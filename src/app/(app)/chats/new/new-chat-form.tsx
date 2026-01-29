@@ -108,8 +108,9 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-2xl space-y-4">
       <textarea
-        className="border-input bg-background placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 w-full resize-none rounded-lg border px-4 py-3 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
+        className="border-input bg-background placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 w-full resize-none overflow-y-auto rounded-lg border px-4 py-3 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
         rows={4}
+        style={{ fieldSizing: "content", maxHeight: "140px" }}
         placeholder="What's on your mind?"
         autoFocus
         value={message}
