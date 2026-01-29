@@ -230,7 +230,7 @@ export function ChatView({
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
-      <header className="border-b px-4 py-3">
+      <header className="border-b px-4 py-2">
         <div className="flex items-center gap-3">
           <h1 className="text-sm font-medium">{title ?? modelName}</h1>
           <span className="bg-muted text-muted-foreground rounded-full border px-2 py-0.5 text-xs">
