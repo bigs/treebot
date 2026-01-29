@@ -118,6 +118,22 @@ export function createChat(
     .get();
 }
 
+export const createForkedChat = (
+  userId: number,
+  parentId: string,
+  provider: Platform,
+  model: string,
+  messages: unknown[],
+  modelParams?: ModelParams | null,
+  title?: string | null
+): { id: string } => {
+  return db
+    .insert(chats)
+    .values({ userId, parentId, provider, model, messages, modelParams, title })
+    .returning({ id: chats.id })
+    .get();
+};
+
 export function getChatById(chatId: string, userId: number) {
   return db
     .select({

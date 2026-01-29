@@ -8,7 +8,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
-import { ArrowUp, Square } from "lucide-react";
+import { ArrowUp, Copy, GitBranch, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -179,6 +179,9 @@ function ChatBody({
   const autoTriggeredRef = useRef(false);
   const scrollContainerRef = useRef<HTMLElement | null>(null);
   const initialScrollRef = useRef(true);
+  const [forkingIndex, setForkingIndex] = useState<number | null>(null);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const toastTimeoutRef = useRef<number | null>(null);
 
   const [transport] = useState(
     () => new DefaultChatTransport({ api: `/chats/${chatId}/stream` })
@@ -223,6 +226,58 @@ function ChatBody({
     setInput("");
   }
 
+  async function handleFork(index: number) {
+    if (forkingIndex !== null) return;
+    setForkingIndex(index);
+    try {
+      const res = await fetch(`/chats/${chatId}/fork`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ index }),
+      });
+      if (!res.ok) {
+        console.error("Failed to fork chat", await res.text());
+        return;
+      }
+      const data = (await res.json()) as { chatId: string };
+      router.push(`/chats/${data.chatId}`);
+      router.refresh();
+    } finally {
+      setForkingIndex(null);
+    }
+  }
+
+  async function handleCopy(text: string, index: number) {
+    if (!text) return;
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.top = "0";
+        textarea.style.left = "0";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+      setCopiedIndex(index);
+      if (toastTimeoutRef.current) {
+        window.clearTimeout(toastTimeoutRef.current);
+      }
+      toastTimeoutRef.current = window.setTimeout(() => {
+        setCopiedIndex(null);
+        toastTimeoutRef.current = null;
+      }, 2000);
+    } catch (err) {
+      console.error("Failed to copy text", err);
+    }
+  }
+
   return (
     <>
       <main
@@ -235,6 +290,11 @@ function ChatBody({
               <MessageBubble
                 key={message.id || `${message.role}-${String(index)}`}
                 message={message}
+                index={index}
+                isForking={forkingIndex === index}
+                isCopied={copiedIndex === index}
+                onFork={handleFork}
+                onCopy={handleCopy}
               />
             ))}
             {chat.error && (
@@ -288,12 +348,28 @@ function ChatBody({
           )}
         </form>
       </div>
+
     </>
   );
 }
 
-function MessageBubble({ message }: { message: UIMessage }) {
+function MessageBubble({
+  message,
+  index,
+  isForking,
+  isCopied,
+  onFork,
+  onCopy,
+}: {
+  message: UIMessage;
+  index: number;
+  isForking: boolean;
+  isCopied: boolean;
+  onFork: (index: number) => void;
+  onCopy: (text: string, index: number) => void;
+}) {
   const isUser = message.role === "user";
+  const isAssistant = message.role === "assistant";
 
   const textContent = message.parts
     .filter((p): p is { type: "text"; text: string } => p.type === "text")
@@ -410,6 +486,34 @@ function MessageBubble({ message }: { message: UIMessage }) {
             >
               {normalizedTextContent}
             </ReactMarkdown>
+          </div>
+        )}
+        {isAssistant && (
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <button
+              type="button"
+              className="inline-flex cursor-pointer items-center gap-1 hover:text-foreground disabled:cursor-not-allowed"
+              onClick={() => onFork(index)}
+              disabled={isForking}
+            >
+              <GitBranch className="size-3.5" />
+              Fork
+            </button>
+            <span className="relative inline-flex">
+              <button
+                type="button"
+                className="inline-flex cursor-pointer items-center gap-1 hover:text-foreground"
+                onClick={() => onCopy(textContent, index)}
+              >
+                <Copy className="size-3.5" />
+                Copy
+              </button>
+              {isCopied && (
+                <span className="pointer-events-none absolute left-full ml-2 top-1/2 -translate-y-1/2 rounded border bg-background px-2 py-1 text-[10px] text-foreground shadow">
+                  Copied
+                </span>
+              )}
+            </span>
           </div>
         )}
       </div>

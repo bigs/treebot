@@ -13,6 +13,7 @@ interface SidebarContextValue {
   toggleSidebar: () => void;
   expandedChats: Set<string>;
   toggleChat: (id: string) => void;
+  expandChats: (ids: string[]) => void;
 }
 
 const SidebarContext = createContext<SidebarContextValue | null>(null);
@@ -43,9 +44,20 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const expandChats = useCallback((ids: string[]) => {
+    if (ids.length === 0) return;
+    setExpandedChats((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
   return (
     <SidebarContext.Provider
-      value={{ collapsed, toggleSidebar, expandedChats, toggleChat }}
+      value={{ collapsed, toggleSidebar, expandedChats, toggleChat, expandChats }}
     >
       {children}
     </SidebarContext.Provider>

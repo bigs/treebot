@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ChevronRight, Ellipsis, MessageSquare, Trash2 } from "lucide-react";
@@ -53,52 +53,59 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
   }
 
   return (
-    <div className="group/item relative">
-      <Link
-        href={`/chats/${node.id}`}
-        onClick={(e) => {
-          if (hasChildren) {
-            e.preventDefault();
-            toggleChat(node.id);
-          }
-        }}
-        className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 pr-8 text-left text-sm ${isActive ? "bg-black/6 font-medium dark:bg-white/8" : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-        style={{ paddingLeft: `${String(depth * 12 + 8)}px` }}
-      >
-        {hasChildren ? (
-          <ChevronRight
-            className={`size-4 shrink-0 transition-transform ${isExpanded ? "rotate-90" : ""}`}
-          />
-        ) : (
-          <MessageSquare className="size-4 shrink-0" />
-        )}
-        <span className="truncate">{node.title}</span>
-      </Link>
+    <div>
+      <div className="group relative">
+        <Link
+          href={`/chats/${node.id}`}
+          className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 pr-8 text-left text-sm ${isActive ? "bg-black/6 font-medium dark:bg-white/8" : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+          style={{ paddingLeft: `${String(depth * 12 + 8)}px` }}
+        >
+          {hasChildren ? (
+            <button
+              type="button"
+              aria-label={isExpanded ? "Collapse chat" : "Expand chat"}
+              className="inline-flex size-4 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleChat(node.id);
+              }}
+            >
+              <ChevronRight
+                className={`size-4 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+              />
+            </button>
+          ) : (
+            <MessageSquare className="size-4 shrink-0" />
+          )}
+          <span className="truncate">{node.title}</span>
+        </Link>
 
-      <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
-        <DropdownMenuTrigger asChild>
-          <button
-            className={`absolute top-1/2 right-1 -translate-y-1/2 rounded-md p-1 opacity-0 transition-opacity group-hover/item:opacity-100 hover:bg-black/6 dark:hover:bg-white/8 ${dropdownOpen ? "opacity-100" : ""}`}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-          >
-            <Ellipsis className="size-4" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" side="right">
-          <DropdownMenuItem
-            variant="destructive"
-            onClick={() => {
-              setAlertOpen(true);
-            }}
-          >
-            <Trash2 className="size-4" />
-            Delete chat
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
+          <DropdownMenuTrigger asChild>
+            <button
+              className={`absolute top-1/2 right-1 -translate-y-1/2 rounded-md p-1 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/6 dark:hover:bg-white/8 ${dropdownOpen ? "opacity-100" : ""}`}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+            >
+              <Ellipsis className="size-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" side="right">
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() => {
+                setAlertOpen(true);
+              }}
+            >
+              <Trash2 className="size-4" />
+              Delete chat
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
         <AlertDialogContent>
@@ -133,6 +140,36 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
 }
 
 export function ChatTree({ nodes }: { nodes: ChatNode[] }) {
+  const { expandChats } = useSidebar();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (!pathname?.startsWith("/chats/")) return;
+    const activeId = pathname.split("/chats/")[1];
+    if (!activeId) return;
+
+    function findPath(current: ChatNode, targetId: string): string[] | null {
+      if (current.id === targetId) return [current.id];
+      for (const child of current.children) {
+        const childPath = findPath(child, targetId);
+        if (childPath) return [current.id, ...childPath];
+      }
+      return null;
+    }
+
+    let path: string[] | null = null;
+    for (const node of nodes) {
+      path = findPath(node, activeId);
+      if (path) break;
+    }
+    if (!path || path.length === 0) return;
+    const idsToExpand = new Set(path.slice(0, -1));
+    if (path.length > 0) {
+      idsToExpand.add(path[path.length - 1]);
+    }
+    expandChats([...idsToExpand]);
+  }, [expandChats, nodes, pathname]);
+
   return (
     <div className="space-y-0.5">
       {nodes.map((node) => (
