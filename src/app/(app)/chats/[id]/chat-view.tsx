@@ -276,6 +276,11 @@ function ChatBody({
 }) {
   const router = useRouter();
   const autoTriggeredRef = useRef(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const [transport] = useState(
     () => new DefaultChatTransport({ api: `/chats/${chatId}/stream` }),
@@ -351,9 +356,11 @@ function ChatBody({
 
   return (
     <div className="min-h-0 flex-1">
-      <AssistantRuntimeProvider runtime={runtime}>
-        <Thread onFork={handleFork} />
-      </AssistantRuntimeProvider>
+      {mounted ? (
+        <AssistantRuntimeProvider runtime={runtime}>
+          <Thread onFork={handleFork} />
+        </AssistantRuntimeProvider>
+      ) : null}
       {chat.error ? (
         <div className="px-4 pb-4 text-sm text-destructive">
           Error: {chat.error.message}
