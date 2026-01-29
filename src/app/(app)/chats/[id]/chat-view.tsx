@@ -97,6 +97,9 @@ interface ChatViewProps {
   initialReasoningLevel: string;
   initialMessages: UIMessage[];
   initialTitle?: string;
+  initialParentId?: string | null;
+  initialCreatedAt?: string;
+  initialUpdatedAt?: string;
 }
 
 export function ChatView({
@@ -106,19 +109,99 @@ export function ChatView({
   initialReasoningLevel,
   initialMessages,
   initialTitle,
+  initialParentId,
+  initialCreatedAt,
+  initialUpdatedAt,
 }: ChatViewProps) {
+  const router = useRouter();
   const [reasoningLevel, setReasoningLevel] = useState(initialReasoningLevel);
   const [title, setTitle] = useState(initialTitle);
   const [mounted, setMounted] = useState(false);
+  const initialTitleRef = useRef<string | null>(initialTitle ?? null);
+  const pollTimeoutRef = useRef<number | null>(null);
+  const pollAttemptsRef = useRef(0);
+  const pollActiveRef = useRef(false);
+  const pollEligibleRef = useRef(
+    Boolean(
+      initialParentId &&
+        initialCreatedAt &&
+        initialUpdatedAt &&
+        initialCreatedAt === initialUpdatedAt
+    )
+  );
 
   // Sync title from server after router.refresh()
   useEffect(() => {
+    const nextTitle = initialTitle ?? null;
+    if (initialTitleRef.current !== nextTitle) {
+      initialTitleRef.current = nextTitle;
+      pollEligibleRef.current = false;
+      if (pollTimeoutRef.current) {
+        window.clearTimeout(pollTimeoutRef.current);
+        pollTimeoutRef.current = null;
+      }
+      pollActiveRef.current = false;
+    }
     setTitle(initialTitle);
   }, [initialTitle]);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (pollTimeoutRef.current) {
+        window.clearTimeout(pollTimeoutRef.current);
+        pollTimeoutRef.current = null;
+      }
+      pollActiveRef.current = false;
+    };
+  }, []);
+
+  function startTitlePolling() {
+    if (!pollEligibleRef.current || pollActiveRef.current) return;
+    pollActiveRef.current = true;
+    pollAttemptsRef.current = 0;
+
+    const maxAttempts = 8;
+    const intervalMs = 1500;
+
+    const poll = async () => {
+      if (!pollActiveRef.current) return;
+      pollAttemptsRef.current += 1;
+
+      try {
+        const res = await fetch(`/chats/${chatId}/title`, {
+          cache: "no-store",
+        });
+        if (res.ok) {
+          const data = (await res.json()) as { title: string | null };
+          if (data.title && data.title !== initialTitleRef.current) {
+            pollActiveRef.current = false;
+            pollEligibleRef.current = false;
+            if (pollTimeoutRef.current) {
+              window.clearTimeout(pollTimeoutRef.current);
+              pollTimeoutRef.current = null;
+            }
+            router.refresh();
+            return;
+          }
+        }
+      } catch {
+        // ignore transient polling errors
+      }
+
+      if (pollAttemptsRef.current >= maxAttempts) {
+        pollActiveRef.current = false;
+        return;
+      }
+
+      pollTimeoutRef.current = window.setTimeout(poll, intervalMs);
+    };
+
+    pollTimeoutRef.current = window.setTimeout(poll, intervalMs);
+  }
 
   useEffect(() => {
     const previousBodyOverflow = document.body.style.overflow;
@@ -156,7 +239,11 @@ export function ChatView({
         </div>
       </header>
 
-      <ChatBody chatId={chatId} initialMessages={initialMessages} />
+      <ChatBody
+        chatId={chatId}
+        initialMessages={initialMessages}
+        onAssistantFinish={startTitlePolling}
+      />
     </div>
   );
 }
@@ -169,9 +256,11 @@ export function ChatView({
 function ChatBody({
   chatId,
   initialMessages,
+  onAssistantFinish,
 }: {
   chatId: string;
   initialMessages: UIMessage[];
+  onAssistantFinish?: () => void;
 }) {
   const router = useRouter();
   const [input, setInput] = useState("");
@@ -193,6 +282,7 @@ function ChatBody({
     messages: initialMessages,
     onFinish: () => {
       router.refresh();
+      onAssistantFinish?.();
     },
   });
 

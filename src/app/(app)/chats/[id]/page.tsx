@@ -34,6 +34,9 @@ export default async function ChatDetailPage({
       initialReasoningLevel={initialReasoningLevel}
       initialMessages={chat.messages as UIMessage[]}
       initialTitle={chat.title ?? undefined}
+      initialParentId={chat.parentId}
+      initialCreatedAt={chat.createdAt}
+      initialUpdatedAt={chat.updatedAt}
     />
   );
 }

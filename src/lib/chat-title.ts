@@ -12,6 +12,7 @@ type TitleInput = {
   modelId: string;
   messages?: UIMessage[];
   prompt?: string;
+  mode?: "summary" | "history";
 };
 
 function buildSummaryFromMessages(messages: UIMessage[]): string {
@@ -28,6 +29,26 @@ function buildSummaryFromMessages(messages: UIMessage[]): string {
     .join("\n");
 }
 
+function buildHistoryFromMessages(messages: UIMessage[]): string {
+  const relevant = messages.filter(
+    (m) => m.role === "user" || m.role === "assistant"
+  );
+  const trimmed = relevant.slice(-12);
+  return trimmed
+    .map((m) => {
+      const text = m.parts
+        .filter((p): p is { type: "text"; text: string } => p.type === "text")
+        .map((p) => p.text)
+        .join(" ")
+        .slice(0, 300);
+      if (!text) return "";
+      const label = m.role === "user" ? "User" : "Assistant";
+      return `${label}: ${text}`;
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
 function buildSummaryFromPrompt(prompt: string): string {
   const trimmed = prompt.trim();
   if (!trimmed) return "";
@@ -41,6 +62,7 @@ export async function generateChatTitle({
   modelId,
   messages,
   prompt,
+  mode = "summary",
 }: TitleInput) {
   const keyRow = getApiKeyByUserAndPlatform(userId, platform);
   if (!keyRow) return;
@@ -59,16 +81,23 @@ export async function generateChatTitle({
   }
 
   const conversationSummary = messages
-    ? buildSummaryFromMessages(messages)
+    ? mode === "history"
+      ? buildHistoryFromMessages(messages)
+      : buildSummaryFromMessages(messages)
     : buildSummaryFromPrompt(prompt ?? "");
 
   if (!conversationSummary) return;
+
+  const promptHeader =
+    mode === "history"
+      ? "Generate a short title (2-6 words) for the following chat. Emphasize the user's most recent message. Return ONLY the title, no quotes or punctuation."
+      : "Generate a short title (2-6 words) for this conversation. Return ONLY the title, no quotes or punctuation.";
 
   const { text: title } = await generateText({
     model: titleModel,
     providerOptions: titleProviderOptions,
     tools,
-    prompt: `Generate a short title (2-6 words) for this conversation. Return ONLY the title, no quotes or punctuation.\n\n${conversationSummary}`,
+    prompt: `${promptHeader}\n\n${conversationSummary}`,
   });
 
   const cleaned = title.trim().replace(/^["']|["']$/g, "");

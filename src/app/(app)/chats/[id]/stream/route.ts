@@ -65,13 +65,17 @@ export async function POST(
     onFinish: ({ messages }) => {
       updateChatMessages(chatId, session.sub, messages);
 
-      if (chat.title == null) {
+      const shouldRegenerateTitle =
+        chat.parentId != null && chat.updatedAt === chat.createdAt;
+
+      if (chat.title == null || shouldRegenerateTitle) {
         generateChatTitle({
           chatId,
           userId: session.sub,
           platform,
           modelId: chat.model,
           messages,
+          mode: shouldRegenerateTitle ? "history" : "summary",
         }).catch(() => {
           /* title generation is best-effort */
         });

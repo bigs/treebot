@@ -111,9 +111,18 @@ export function createChat(
   messages: unknown[],
   modelParams?: ModelParams
 ) {
+  const now = new Date().toISOString();
   return db
     .insert(chats)
-    .values({ userId, provider, model, messages, modelParams })
+    .values({
+      userId,
+      provider,
+      model,
+      messages,
+      modelParams,
+      createdAt: now,
+      updatedAt: now,
+    })
     .returning({ id: chats.id })
     .get();
 }
@@ -127,9 +136,20 @@ export const createForkedChat = (
   modelParams?: ModelParams | null,
   title?: string | null
 ): { id: string } => {
+  const now = new Date().toISOString();
   return db
     .insert(chats)
-    .values({ userId, parentId, provider, model, messages, modelParams, title })
+    .values({
+      userId,
+      parentId,
+      provider,
+      model,
+      messages,
+      modelParams,
+      title,
+      createdAt: now,
+      updatedAt: now,
+    })
     .returning({ id: chats.id })
     .get();
 };
@@ -138,11 +158,26 @@ export function getChatById(chatId: string, userId: number) {
   return db
     .select({
       id: chats.id,
+      parentId: chats.parentId,
       model: chats.model,
       provider: chats.provider,
       modelParams: chats.modelParams,
       messages: chats.messages,
       title: chats.title,
+      createdAt: chats.createdAt,
+      updatedAt: chats.updatedAt,
+    })
+    .from(chats)
+    .where(and(eq(chats.id, chatId), eq(chats.userId, userId)))
+    .get();
+}
+
+export function getChatTitleById(chatId: string, userId: number) {
+  return db
+    .select({
+      id: chats.id,
+      title: chats.title,
+      updatedAt: chats.updatedAt,
     })
     .from(chats)
     .where(and(eq(chats.id, chatId), eq(chats.userId, userId)))
