@@ -54,6 +54,9 @@ export function ChatView({
       <header className="border-b px-4 py-3">
         <div className="flex items-center gap-3">
           <h1 className="text-sm font-medium">{title ?? modelName}</h1>
+          <span className="rounded-full border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+            {modelName}
+          </span>
           {mounted && reasoningLevels.length > 0 && (
             <Select value={reasoningLevel} onValueChange={setReasoningLevel}>
               <SelectTrigger className="w-[160px]" size="sm">
