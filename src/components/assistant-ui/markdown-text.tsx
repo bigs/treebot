@@ -59,13 +59,28 @@ const useCopyToClipboard = ({
 } = {}) => {
   const [isCopied, setIsCopied] = useState<boolean>(false);
 
-  const copyToClipboard = (value: string) => {
+  const copyToClipboard = async (value: string) => {
     if (!value) return;
 
-    navigator.clipboard.writeText(value).then(() => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+      } else {
+        // Fallback for non-secure contexts
+        const textarea = document.createElement("textarea");
+        textarea.value = value;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), copiedDuration);
-    });
+    } catch {
+      console.error("Failed to copy to clipboard");
+    }
   };
 
   return { isCopied, copyToClipboard };

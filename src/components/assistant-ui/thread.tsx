@@ -23,6 +23,7 @@ import {
   SuggestionPrimitive,
   ThreadPrimitive,
   useAuiState,
+  useMessage,
 } from "@assistant-ui/react";
 import {
   ArrowDownIcon,
@@ -37,7 +38,7 @@ import {
   RefreshCwIcon,
   SquareIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, type FC } from "react";
+import { useCallback, useEffect, useRef, useState, type FC } from "react";
 
 export const Thread: FC = () => {
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -301,6 +302,60 @@ const AssistantMessage: FC = () => {
   );
 };
 
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+    // Fallback for non-secure contexts
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function getMessageText(content: readonly unknown[]): string {
+  return content
+    .filter((part): part is { type: "text"; text: string } =>
+      typeof part === "object" &&
+      part !== null &&
+      "type" in part &&
+      part.type === "text" &&
+      "text" in part
+    )
+    .map((part) => part.text)
+    .join("\n\n");
+}
+
+const CopyMessageButton: FC = () => {
+  const [isCopied, setIsCopied] = useState(false);
+  const content = useMessage((m) => m.content);
+
+  const handleCopy = async () => {
+    const text = getMessageText(content);
+    const success = await copyToClipboard(text);
+    if (success) {
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    }
+  };
+
+  return (
+    <TooltipIconButton tooltip="Copy" onClick={handleCopy}>
+      {isCopied ? <CheckIcon /> : <CopyIcon />}
+    </TooltipIconButton>
+  );
+};
+
 const AssistantActionBar: FC = () => {
   return (
     <ActionBarPrimitive.Root
@@ -309,16 +364,7 @@ const AssistantActionBar: FC = () => {
       autohideFloat="single-branch"
       className="aui-assistant-action-bar-root col-start-3 row-start-2 -ml-1 flex gap-1 text-muted-foreground data-floating:absolute data-floating:rounded-md data-floating:border data-floating:bg-background data-floating:p-1 data-floating:shadow-sm"
     >
-      <ActionBarPrimitive.Copy asChild>
-        <TooltipIconButton tooltip="Copy">
-          <AuiIf condition={({ message }) => message.isCopied}>
-            <CheckIcon />
-          </AuiIf>
-          <AuiIf condition={({ message }) => !message.isCopied}>
-            <CopyIcon />
-          </AuiIf>
-        </TooltipIconButton>
-      </ActionBarPrimitive.Copy>
+      <CopyMessageButton />
       <ActionBarPrimitive.Reload asChild>
         <TooltipIconButton tooltip="Refresh">
           <RefreshCwIcon />

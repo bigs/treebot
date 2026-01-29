@@ -40,28 +40,28 @@ const toThreadMessageLike = (
   idx: number,
 ): ThreadMessageLike => {
   const resolvedId = message.id?.trim() ? message.id : `message-${idx}`;
-  const content = message.parts.flatMap((part) => {
+  // Build content array - using explicit type to avoid readonly issues
+  const contentArr: Array<
+    | { type: "text"; text: string }
+    | { type: "reasoning"; text: string }
+    | { type: "source"; sourceType: "url"; id: string; url: string; title?: string }
+    | { type: "tool-call"; toolCallId: string; toolName: string; args: Record<string, unknown>; argsText: string; result: unknown; isError: boolean }
+    | { type: "data"; name: string; data: unknown }
+  > = [];
+  for (const part of message.parts) {
     if (part.type === "text") {
-      return [{ type: "text", text: part.text }];
-    }
-
-    if (part.type === "reasoning") {
-      return [{ type: "reasoning", text: part.text }];
-    }
-
-    if (part.type === "source-url") {
-      return [
-        {
-          type: "source",
-          sourceType: "url",
-          id: part.sourceId,
-          url: part.url,
-          title: part.title,
-        },
-      ];
-    }
-
-    if (part.type === "dynamic-tool" || part.type.startsWith("tool-")) {
+      contentArr.push({ type: "text", text: part.text });
+    } else if (part.type === "reasoning") {
+      contentArr.push({ type: "reasoning", text: part.text });
+    } else if (part.type === "source-url") {
+      contentArr.push({
+        type: "source",
+        sourceType: "url",
+        id: part.sourceId,
+        url: part.url,
+        title: part.title,
+      });
+    } else if (part.type === "dynamic-tool" || part.type.startsWith("tool-")) {
       const toolPart = part as {
         type: string;
         toolName?: string;
@@ -75,50 +75,42 @@ const toThreadMessageLike = (
         toolPart.type === "dynamic-tool"
           ? toolPart.toolName ?? "tool"
           : toolPart.type.slice("tool-".length);
-      const toolCallId =
-        toolPart.toolCallId ?? `${toolName}-${resolvedId}`;
-
+      const toolCallId = toolPart.toolCallId ?? `${toolName}-${resolvedId}`;
       const input = toolPart.input;
       const args =
-        input && typeof input === "object" ? (input as Record<string, unknown>) : {};
+        input && typeof input === "object"
+          ? (input as Record<string, unknown>)
+          : {};
       const argsText =
         typeof input === "string" ? input : JSON.stringify(input ?? {});
-
       const state = toolPart.state;
       const result = toolPart.output;
       const errorText = toolPart.errorText;
 
-      return [
-        {
-          type: "tool-call",
-          toolCallId,
-          toolName,
-          args,
-          argsText,
-          result: result ?? errorText,
-          isError: state === "output-error" || state === "output-denied",
-        },
-      ];
-    }
-
-    if (part.type.startsWith("data-")) {
+      contentArr.push({
+        type: "tool-call",
+        toolCallId,
+        toolName,
+        args,
+        argsText,
+        result: result ?? errorText,
+        isError: state === "output-error" || state === "output-denied",
+      });
+    } else if (part.type.startsWith("data-")) {
       const dataPart = part as { type: string; data: unknown };
-      return [
-        {
-          type: "data",
-          name: part.type.slice("data-".length),
-          data: dataPart.data,
-        },
-      ];
+      contentArr.push({
+        type: "data",
+        name: part.type.slice("data-".length),
+        data: dataPart.data,
+      });
     }
-
-    return [];
-  });
+  }
 
   return {
     role: message.role,
     id: resolvedId,
-    content,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    content: contentArr as any,
   };
 };
 

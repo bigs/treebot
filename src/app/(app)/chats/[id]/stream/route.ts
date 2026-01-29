@@ -56,7 +56,8 @@ export async function POST(
     system: getSystemPrompt(),
     messages: modelMessages,
     providerOptions,
-    tools,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    tools: tools as any,
     abortSignal: request.signal,
   });
 
