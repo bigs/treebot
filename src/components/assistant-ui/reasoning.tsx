@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { BrainIcon, ChevronDownIcon } from "lucide-react";
 import {
@@ -233,8 +233,27 @@ const ReasoningGroupImpl: ReasoningGroupComponent = ({
     return lastIndex >= startIndex && lastIndex <= endIndex;
   });
 
+  const [isOpen, setIsOpen] = useState(isReasoningStreaming);
+  const wasStreamingRef = useRef(isReasoningStreaming);
+
+  // Auto-collapse when reasoning streaming ends (legitimate state transition pattern)
+  useEffect(() => {
+    const wasStreaming = wasStreamingRef.current;
+    wasStreamingRef.current = isReasoningStreaming;
+
+    // When streaming starts, open the collapsible
+    if (isReasoningStreaming && !wasStreaming) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsOpen(true);
+    }
+    // When streaming ends, close the collapsible
+    if (!isReasoningStreaming && wasStreaming) {
+      setIsOpen(false);
+    }
+  }, [isReasoningStreaming]);
+
   return (
-    <ReasoningRoot defaultOpen={isReasoningStreaming}>
+    <ReasoningRoot open={isOpen} onOpenChange={setIsOpen}>
       <ReasoningTrigger active={isReasoningStreaming} />
       <ReasoningContent aria-busy={isReasoningStreaming}>
         <ReasoningText>{children}</ReasoningText>
