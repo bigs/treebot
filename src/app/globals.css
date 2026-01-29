@@ -129,3 +129,19 @@
 details[open] summary .arrow {
   transform: rotate(90deg);
 }
+
+/* Shiki syntax highlighting - class-based dark mode */
+.shiki,
+.shiki span {
+  background-color: #f4f4f5 !important; /* zinc-100 */
+  font-size: 0.8125rem !important; /* 13px */
+}
+
+.dark .shiki,
+.dark .shiki span {
+  color: var(--shiki-dark) !important;
+  background-color: #18181b !important; /* zinc-900 */
+  font-style: var(--shiki-dark-font-style) !important;
+  font-weight: var(--shiki-dark-font-weight) !important;
+  text-decoration: var(--shiki-dark-text-decoration) !important;
+}
