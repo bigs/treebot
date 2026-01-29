@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
@@ -316,6 +316,27 @@ function ChatBody({
 
   const runtime = useExternalStoreRuntime(adapter);
 
+  const handleFork = useCallback(
+    async (messageIndex: number) => {
+      try {
+        const res = await fetch(`/chats/${chatId}/fork`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ index: messageIndex }),
+        });
+        if (!res.ok) {
+          console.error("Failed to fork chat", await res.text());
+          return;
+        }
+        const data = (await res.json()) as { chatId: string };
+        router.push(`/chats/${data.chatId}`);
+        router.refresh();
+      } catch (err) {
+        console.error("Failed to fork chat", err);
+      }
+    },
+    [chatId, router],
+  );
 
   // Auto-trigger for new chats: if all messages are user-only, send to get assistant response
   useEffect(() => {
@@ -331,7 +352,7 @@ function ChatBody({
   return (
     <div className="min-h-0 flex-1">
       <AssistantRuntimeProvider runtime={runtime}>
-        <Thread />
+        <Thread onFork={handleFork} />
       </AssistantRuntimeProvider>
       {chat.error ? (
         <div className="px-4 pb-4 text-sm text-destructive">

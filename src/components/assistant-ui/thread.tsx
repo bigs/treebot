@@ -33,14 +33,30 @@ import {
   ChevronRightIcon,
   CopyIcon,
   DownloadIcon,
+  GitForkIcon,
   MoreHorizontalIcon,
-  PencilIcon,
-  RefreshCwIcon,
   SquareIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type FC } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type FC,
+} from "react";
 
-export const Thread: FC = () => {
+// Context for fork callback
+const ForkContext = createContext<((messageIndex: number) => void) | null>(
+  null,
+);
+
+export interface ThreadProps {
+  onFork?: (messageIndex: number) => void;
+}
+
+export const Thread: FC<ThreadProps> = ({ onFork }) => {
   const viewportRef = useRef<HTMLDivElement>(null);
   const isRunning = useAuiState(({ thread }) => thread.isRunning);
 
@@ -106,45 +122,47 @@ export const Thread: FC = () => {
   }, [isRunning, scrollToLastUserMessage]);
 
   return (
-    <ThreadPrimitive.Root
-      className="aui-root aui-thread-root @container flex h-full flex-col bg-background"
-      style={{
-        ["--thread-max-width" as string]: "44rem",
-      }}
-    >
-      <ThreadPrimitive.Viewport
-        turnAnchor="top"
-        autoScroll={false}
-        scrollToBottomOnRunStart={false}
-        scrollToBottomOnInitialize={false}
-        scrollToBottomOnThreadSwitch={false}
-        ref={viewportRef}
-        className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll px-4 pt-4 [overflow-anchor:none]"
+    <ForkContext.Provider value={onFork ?? null}>
+      <ThreadPrimitive.Root
+        className="aui-root aui-thread-root @container flex h-full flex-col bg-background"
+        style={{
+          ["--thread-max-width" as string]: "44rem",
+        }}
       >
-        <AuiIf condition={({ thread }) => thread.isEmpty}>
-          <ThreadWelcome />
-        </AuiIf>
+        <ThreadPrimitive.Viewport
+          turnAnchor="top"
+          autoScroll={false}
+          scrollToBottomOnRunStart={false}
+          scrollToBottomOnInitialize={false}
+          scrollToBottomOnThreadSwitch={false}
+          ref={viewportRef}
+          className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll px-4 pt-4 [overflow-anchor:none]"
+        >
+          <AuiIf condition={({ thread }) => thread.isEmpty}>
+            <ThreadWelcome />
+          </AuiIf>
 
-        <ThreadPrimitive.Messages
-          components={{
-            UserMessage,
-            EditComposer,
-            AssistantMessage,
-          }}
-        />
-        <AuiIf condition={({ thread }) => !thread.isEmpty && !thread.isRunning}>
-          <div className="min-h-8 grow" />
-        </AuiIf>
-        <AuiIf condition={({ thread }) => thread.isRunning}>
-          <div className="h-[80vh] shrink-0" />
-        </AuiIf>
+          <ThreadPrimitive.Messages
+            components={{
+              UserMessage,
+              EditComposer,
+              AssistantMessage,
+            }}
+          />
+          <AuiIf condition={({ thread }) => !thread.isEmpty && !thread.isRunning}>
+            <div className="min-h-8 grow" />
+          </AuiIf>
+          <AuiIf condition={({ thread }) => thread.isRunning}>
+            <div className="h-[80vh] shrink-0" />
+          </AuiIf>
 
-        <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer sticky bottom-0 mx-auto mt-auto flex w-full max-w-(--thread-max-width) flex-col gap-4 overflow-visible rounded-t-3xl pb-4 md:pb-6">
-          <ThreadScrollToBottom />
-          <Composer />
-        </ThreadPrimitive.ViewportFooter>
-      </ThreadPrimitive.Viewport>
-    </ThreadPrimitive.Root>
+          <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer sticky bottom-0 mx-auto mt-auto flex w-full max-w-(--thread-max-width) flex-col gap-4 overflow-visible rounded-t-3xl pb-4 md:pb-6">
+            <ThreadScrollToBottom />
+            <Composer />
+          </ThreadPrimitive.ViewportFooter>
+        </ThreadPrimitive.Viewport>
+      </ThreadPrimitive.Root>
+    </ForkContext.Provider>
   );
 };
 
@@ -356,20 +374,36 @@ const CopyMessageButton: FC = () => {
   );
 };
 
+const ForkButton: FC = () => {
+  const onFork = useContext(ForkContext);
+  const messageId = useMessage((m) => m.id);
+  const messages = useAuiState(({ thread }) => thread.messages);
+
+  const handleFork = () => {
+    if (!onFork) return;
+    const index = messages.findIndex((m) => m.id === messageId);
+    if (index !== -1) {
+      onFork(index);
+    }
+  };
+
+  if (!onFork) return null;
+
+  return (
+    <TooltipIconButton tooltip="Fork" onClick={handleFork}>
+      <GitForkIcon />
+    </TooltipIconButton>
+  );
+};
+
 const AssistantActionBar: FC = () => {
   return (
     <ActionBarPrimitive.Root
       hideWhenRunning
-      autohide="not-last"
-      autohideFloat="single-branch"
-      className="aui-assistant-action-bar-root col-start-3 row-start-2 -ml-1 flex gap-1 text-muted-foreground data-floating:absolute data-floating:rounded-md data-floating:border data-floating:bg-background data-floating:p-1 data-floating:shadow-sm"
+      className="aui-assistant-action-bar-root -ml-1 flex gap-1 text-muted-foreground"
     >
       <CopyMessageButton />
-      <ActionBarPrimitive.Reload asChild>
-        <TooltipIconButton tooltip="Refresh">
-          <RefreshCwIcon />
-        </TooltipIconButton>
-      </ActionBarPrimitive.Reload>
+      <ForkButton />
       <ActionBarMorePrimitive.Root>
         <ActionBarMorePrimitive.Trigger asChild>
           <TooltipIconButton
@@ -404,16 +438,17 @@ const UserMessage: FC = () => {
     >
       <UserMessageAttachments />
 
-      <div className="aui-user-message-content-wrapper relative col-start-2 min-w-0">
+      <div className="aui-user-message-content-wrapper col-start-2 min-w-0">
         <div className="aui-user-message-content wrap-break-word rounded-2xl bg-muted px-4 py-2.5 text-foreground">
           <MessagePrimitive.Parts />
         </div>
-        <div className="aui-user-action-bar-wrapper absolute top-1/2 left-0 -translate-x-full -translate-y-1/2 pr-2">
-          <UserActionBar />
-        </div>
       </div>
 
-      <BranchPicker className="aui-user-branch-picker col-span-full col-start-1 row-start-3 -mr-1 justify-end" />
+      <div className="aui-user-message-footer col-start-2 mt-1 flex justify-start">
+        <UserActionBar />
+      </div>
+
+      <BranchPicker className="aui-user-branch-picker col-span-full col-start-1 row-start-4 -mr-1 justify-end" />
     </MessagePrimitive.Root>
   );
 };
@@ -422,14 +457,9 @@ const UserActionBar: FC = () => {
   return (
     <ActionBarPrimitive.Root
       hideWhenRunning
-      autohide="not-last"
-      className="aui-user-action-bar-root flex flex-col items-end"
+      className="aui-user-action-bar-root flex gap-1 text-muted-foreground"
     >
-      <ActionBarPrimitive.Edit asChild>
-        <TooltipIconButton tooltip="Edit" className="aui-user-action-edit p-4">
-          <PencilIcon />
-        </TooltipIconButton>
-      </ActionBarPrimitive.Edit>
+      <CopyMessageButton />
     </ActionBarPrimitive.Root>
   );
 };
