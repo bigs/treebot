@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
-import rehypeKatex from "rehype-katex";
-import { ArrowUp, Copy, GitBranch, Square } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import {
+  AssistantRuntimeProvider,
+  type ExternalStoreAdapter,
+  type ThreadMessageLike,
+  useExternalStoreRuntime,
+} from "@assistant-ui/react";
+import { Thread } from "@/components/assistant-ui/thread";
 import {
   Select,
   SelectContent,
@@ -18,86 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { ReasoningOption } from "@/lib/models";
-
-function normalizeMathDelimiters(markdown: string) {
-  if (!markdown) return markdown;
-
-  const applyReplacements = (value: string) =>
-    value
-      .replace(/\\\[((?:.|\n)*?)\\\]/g, (_match, inner) => `$$${inner}$$`)
-      .replace(/\\\(((?:.|\n)*?)\\\)/g, (_match, inner) => `$${inner}$`);
-
-  let result = "";
-  let buffer = "";
-  let i = 0;
-
-  const flushBuffer = () => {
-    if (buffer.length === 0) return;
-    result += applyReplacements(buffer);
-    buffer = "";
-  };
-
-  while (i < markdown.length) {
-    const char = markdown[i];
-    const atLineStart = i === 0 || markdown[i - 1] === "\n";
-
-    if (
-      atLineStart &&
-      (markdown.startsWith("```", i) || markdown.startsWith("~~~", i))
-    ) {
-      flushBuffer();
-      const fence = markdown.startsWith("```", i) ? "```" : "~~~";
-      const fenceStart = i;
-      i += fence.length;
-      while (i < markdown.length && markdown[i] !== "\n") i += 1;
-      if (i < markdown.length) i += 1;
-
-      while (i < markdown.length) {
-        if (
-          (i === 0 || markdown[i - 1] === "\n") &&
-          markdown.startsWith(fence, i)
-        ) {
-          i += fence.length;
-          while (i < markdown.length && markdown[i] !== "\n") i += 1;
-          if (i < markdown.length) i += 1;
-          break;
-        }
-        i += 1;
-      }
-
-      result += markdown.slice(fenceStart, i);
-      continue;
-    }
-
-    if (char === "`") {
-      flushBuffer();
-      let backtickCount = 1;
-      while (
-        i + backtickCount < markdown.length &&
-        markdown[i + backtickCount] === "`"
-      ) {
-        backtickCount += 1;
-      }
-      const start = i;
-      i += backtickCount;
-      while (i < markdown.length) {
-        if (markdown.startsWith("`".repeat(backtickCount), i)) {
-          i += backtickCount;
-          break;
-        }
-        i += 1;
-      }
-      result += markdown.slice(start, i);
-      continue;
-    }
-
-    buffer += char;
-    i += 1;
-  }
-
-  flushBuffer();
-  return result;
-}
 
 interface ChatViewProps {
   chatId: string;
@@ -110,6 +31,96 @@ interface ChatViewProps {
   initialCreatedAt?: string;
   initialUpdatedAt?: string;
 }
+
+const isChatRunning = (status: string) =>
+  status === "streaming" || status === "submitted";
+
+const toThreadMessageLike = (
+  message: UIMessage,
+  idx: number,
+): ThreadMessageLike => {
+  const resolvedId = message.id?.trim() ? message.id : `message-${idx}`;
+  const content = message.parts.flatMap((part) => {
+    if (part.type === "text") {
+      return [{ type: "text", text: part.text }];
+    }
+
+    if (part.type === "reasoning") {
+      return [{ type: "reasoning", text: part.text }];
+    }
+
+    if (part.type === "source-url") {
+      return [
+        {
+          type: "source",
+          sourceType: "url",
+          id: part.sourceId,
+          url: part.url,
+          title: part.title,
+        },
+      ];
+    }
+
+    if (part.type === "dynamic-tool" || part.type.startsWith("tool-")) {
+      const toolPart = part as {
+        type: string;
+        toolName?: string;
+        toolCallId?: string;
+        input?: unknown;
+        output?: unknown;
+        errorText?: string;
+        state?: string;
+      };
+      const toolName =
+        toolPart.type === "dynamic-tool"
+          ? toolPart.toolName ?? "tool"
+          : toolPart.type.slice("tool-".length);
+      const toolCallId =
+        toolPart.toolCallId ?? `${toolName}-${resolvedId}`;
+
+      const input = toolPart.input;
+      const args =
+        input && typeof input === "object" ? (input as Record<string, unknown>) : {};
+      const argsText =
+        typeof input === "string" ? input : JSON.stringify(input ?? {});
+
+      const state = toolPart.state;
+      const result = toolPart.output;
+      const errorText = toolPart.errorText;
+
+      return [
+        {
+          type: "tool-call",
+          toolCallId,
+          toolName,
+          args,
+          argsText,
+          result: result ?? errorText,
+          isError: state === "output-error" || state === "output-denied",
+        },
+      ];
+    }
+
+    if (part.type.startsWith("data-")) {
+      const dataPart = part as { type: string; data: unknown };
+      return [
+        {
+          type: "data",
+          name: part.type.slice("data-".length),
+          data: dataPart.data,
+        },
+      ];
+    }
+
+    return [];
+  });
+
+  return {
+    role: message.role,
+    id: resolvedId,
+    content,
+  };
+};
 
 export function ChatView({
   chatId,
@@ -133,10 +144,10 @@ export function ChatView({
   const pollEligibleRef = useRef(
     Boolean(
       initialParentId &&
-      initialCreatedAt &&
-      initialUpdatedAt &&
-      initialCreatedAt === initialUpdatedAt
-    )
+        initialCreatedAt &&
+        initialUpdatedAt &&
+        initialCreatedAt === initialUpdatedAt,
+    ),
   );
 
   // Sync title from server after router.refresh()
@@ -272,18 +283,10 @@ function ChatBody({
   onAssistantFinish?: () => void;
 }) {
   const router = useRouter();
-  const [input, setInput] = useState("");
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const lastUserMessageRef = useRef<HTMLDivElement>(null);
   const autoTriggeredRef = useRef(false);
-  const pendingScrollRef = useRef(false);
-  const [forkingIndex, setForkingIndex] = useState<number | null>(null);
-  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-  const toastTimeoutRef = useRef<number | null>(null);
 
   const [transport] = useState(
-    () => new DefaultChatTransport({ api: `/chats/${chatId}/stream` })
+    () => new DefaultChatTransport({ api: `/chats/${chatId}/stream` }),
   );
 
   const chat = useChat({
@@ -296,7 +299,31 @@ function ChatBody({
     },
   });
 
-  const isActive = chat.status === "streaming" || chat.status === "submitted";
+  const adapter = useMemo<ExternalStoreAdapter<UIMessage>>(
+    () => ({
+      messages: chat.messages,
+      isRunning: isChatRunning(chat.status),
+      onNew: async (message) => {
+        const text = message.content
+          .filter((part) => part.type === "text")
+          .map((part) => part.text)
+          .join("\n\n");
+        if (!text.trim()) return;
+        await chat.sendMessage({ text });
+      },
+      onCancel: async () => {
+        chat.stop();
+      },
+      onReload: async () => {
+        chat.regenerate();
+      },
+      convertMessage: (message, idx) => toThreadMessageLike(message, idx),
+    }),
+    [chat.messages, chat.status, chat.sendMessage, chat.stop, chat.regenerate],
+  );
+
+  const runtime = useExternalStoreRuntime(adapter);
+
 
   // Auto-trigger for new chats: if all messages are user-only, send to get assistant response
   useEffect(() => {
@@ -309,340 +336,16 @@ function ChatBody({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
   }, []);
 
-  // Scroll user message to top when a new message is sent
-  useEffect(() => {
-    if (!pendingScrollRef.current) return;
-    const container = scrollContainerRef.current;
-    const userMessage = lastUserMessageRef.current;
-    if (!container || !userMessage) return;
-
-    pendingScrollRef.current = false;
-    const containerRect = container.getBoundingClientRect();
-    const messageRect = userMessage.getBoundingClientRect();
-    const offsetFromTop = 10;
-    const scrollTop =
-      container.scrollTop +
-      (messageRect.top - containerRect.top) -
-      offsetFromTop;
-    container.scrollTo({ top: scrollTop, behavior: "smooth" });
-  }, [chat.messages]);
-
-  // Clear min-height when streaming ends
-  useEffect(() => {
-    if (!isActive && contentRef.current) {
-      contentRef.current.style.minHeight = "";
-    }
-  }, [isActive]);
-
-  function handleSubmit(e: React.SyntheticEvent) {
-    e.preventDefault();
-    const trimmed = input.trim();
-    if (!trimmed || isActive) return;
-    pendingScrollRef.current = true;
-    // Expand scroll container by viewport height to allow scrolling user message to top
-    const content = contentRef.current;
-    if (content) {
-      const newHeight = content.scrollHeight + window.innerHeight;
-      content.style.minHeight = `${String(newHeight)}px`;
-    }
-    void chat.sendMessage({ text: trimmed });
-    setInput("");
-  }
-
-  async function handleFork(index: number) {
-    if (forkingIndex !== null) return;
-    setForkingIndex(index);
-    try {
-      const res = await fetch(`/chats/${chatId}/fork`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ index }),
-      });
-      if (!res.ok) {
-        console.error("Failed to fork chat", await res.text());
-        return;
-      }
-      const data = (await res.json()) as { chatId: string };
-      router.push(`/chats/${data.chatId}`);
-      router.refresh();
-    } finally {
-      setForkingIndex(null);
-    }
-  }
-
-  async function handleCopy(text: string, index: number) {
-    if (!text) return;
-    try {
-      if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-      } else {
-        const textarea = document.createElement("textarea");
-        textarea.value = text;
-        textarea.setAttribute("readonly", "");
-        textarea.style.position = "fixed";
-        textarea.style.top = "0";
-        textarea.style.left = "0";
-        textarea.style.opacity = "0";
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textarea);
-      }
-      setCopiedIndex(index);
-      if (toastTimeoutRef.current) {
-        window.clearTimeout(toastTimeoutRef.current);
-      }
-      toastTimeoutRef.current = window.setTimeout(() => {
-        setCopiedIndex(null);
-        toastTimeoutRef.current = null;
-      }, 2000);
-    } catch (err) {
-      console.error("Failed to copy text", err);
-    }
-  }
-
-  // Find index of last user message for scroll targeting
-  const lastUserIndex = chat.messages.reduce(
-    (acc, msg, idx) => (msg.role === "user" ? idx : acc),
-    -1
-  );
-
   return (
-    <>
-      <main ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto">
-        <div ref={contentRef} className="mx-auto max-w-3xl px-4 py-6">
-          <div className="space-y-6">
-            {chat.messages.map((message, index) => (
-              <div
-                key={message.id || `${message.role}-${String(index)}`}
-                ref={index === lastUserIndex ? lastUserMessageRef : undefined}
-              >
-                <MessageBubble
-                  message={message}
-                  index={index}
-                  isForking={forkingIndex === index}
-                  isCopied={copiedIndex === index}
-                  onFork={handleFork}
-                  onCopy={handleCopy}
-                />
-              </div>
-            ))}
-            {chat.error && (
-              <div className="text-destructive text-sm">
-                Error: {chat.error.message}
-              </div>
-            )}
-          </div>
+    <div className="min-h-0 flex-1">
+      <AssistantRuntimeProvider runtime={runtime}>
+        <Thread />
+      </AssistantRuntimeProvider>
+      {chat.error ? (
+        <div className="px-4 pb-4 text-sm text-destructive">
+          Error: {chat.error.message}
         </div>
-      </main>
-
-      <div className="border-t px-4 py-3">
-        <form
-          onSubmit={handleSubmit}
-          className="mx-auto flex max-w-3xl items-start gap-2"
-        >
-          <textarea
-            className="border-input bg-background placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex-1 resize-none overflow-y-auto rounded-lg border px-4 py-2.5 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
-            rows={1}
-            style={{ fieldSizing: "content", maxHeight: "140px" }}
-            placeholder="Send a message..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit(e);
-              }
-            }}
-          />
-          {isActive ? (
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              className="shrink-0 rounded-full"
-              onClick={() => void chat.stop()}
-            >
-              <Square className="h-4 w-4" />
-            </Button>
-          ) : (
-            <Button
-              type="submit"
-              size="icon"
-              disabled={!input.trim()}
-              className="shrink-0 rounded-full"
-            >
-              <ArrowUp className="h-4 w-4" />
-            </Button>
-          )}
-        </form>
-      </div>
-    </>
-  );
-}
-
-function MessageBubble({
-  message,
-  index,
-  isForking,
-  isCopied,
-  onFork,
-  onCopy,
-}: {
-  message: UIMessage;
-  index: number;
-  isForking: boolean;
-  isCopied: boolean;
-  onFork: (index: number) => void;
-  onCopy: (text: string, index: number) => void;
-}) {
-  const isUser = message.role === "user";
-  const isAssistant = message.role === "assistant";
-
-  const textContent = message.parts
-    .filter((p): p is { type: "text"; text: string } => p.type === "text")
-    .map((p) => p.text)
-    .join("");
-
-  const reasoningParts = message.parts.filter(
-    (p): p is { type: "reasoning"; text: string } => p.type === "reasoning"
-  );
-
-  const isStreaming = message.parts.some(
-    (part): part is { state?: "streaming" | "done" } =>
-      "state" in part && part.state === "streaming"
-  );
-
-  const reasoningContent = reasoningParts.map((p) => p.text).join("\n\n");
-
-  const normalizedReasoningContent = normalizeMathDelimiters(reasoningContent);
-
-  const reasoningLines = reasoningContent
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-
-  const isBoldOnly = (line: string) => /^\*\*[^*]+\*\*$/.test(line);
-
-  const reasoningBlocks: Array<{ title?: string; body: string[] }> = [];
-  for (const line of reasoningLines) {
-    if (isBoldOnly(line)) {
-      reasoningBlocks.push({ title: line, body: [] });
-      continue;
-    }
-    const current = reasoningBlocks.at(-1);
-    if (!current) {
-      reasoningBlocks.push({ body: [line] });
-      continue;
-    }
-    current.body.push(line);
-  }
-
-  const previewBlock = isStreaming
-    ? reasoningBlocks.at(-1)
-    : reasoningBlocks.at(0);
-
-  const previewLine = (() => {
-    if (!previewBlock) return undefined;
-    const bodyLine = previewBlock.body[0];
-    if (previewBlock.title && bodyLine) {
-      return `${previewBlock.title}: ${bodyLine}`;
-    }
-    return previewBlock.title ?? bodyLine;
-  })();
-
-  const normalizedPreviewLine = previewLine
-    ? normalizeMathDelimiters(previewLine)
-    : undefined;
-
-  const normalizedTextContent = normalizeMathDelimiters(textContent);
-
-  if (isUser) {
-    return (
-      <div className="flex justify-end">
-        <div className="bg-primary text-primary-foreground max-w-[80%] rounded-2xl px-4 py-2.5 text-sm">
-          {textContent}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex justify-start">
-      <div className="max-w-[80%] space-y-2">
-        {reasoningContent.trim().length > 0 && (
-          <details className="group bg-muted/30 rounded-lg border">
-            <summary className="text-muted-foreground cursor-pointer list-none px-3 py-2 text-xs">
-              <div className="flex items-center gap-2">
-                <span
-                  className="arrow text-muted-foreground/70 flex h-5 w-5 items-center justify-center text-[28px] leading-none transition-transform duration-150"
-                  aria-hidden
-                  style={{ marginTop: -2 }}
-                >
-                  ▸
-                </span>
-                <span className="truncate">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm, remarkMath]}
-                    rehypePlugins={[rehypeKatex]}
-                    components={{
-                      p: ({ children }) => <span>{children}</span>,
-                    }}
-                  >
-                    {normalizedPreviewLine ?? "Thinking…"}
-                  </ReactMarkdown>
-                </span>
-              </div>
-            </summary>
-            <div className="text-muted-foreground border-t px-3 py-2 text-xs">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm, remarkMath]}
-                rehypePlugins={[rehypeKatex]}
-              >
-                {normalizedReasoningContent}
-              </ReactMarkdown>
-            </div>
-          </details>
-        )}
-        {normalizedTextContent.trim().length > 0 && (
-          <div className="prose prose-sm dark:prose-invert max-w-none">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm, remarkMath]}
-              rehypePlugins={[rehypeKatex]}
-            >
-              {normalizedTextContent}
-            </ReactMarkdown>
-          </div>
-        )}
-        {isAssistant && (
-          <div className="text-muted-foreground flex items-center gap-3 text-xs">
-            <button
-              type="button"
-              className="hover:text-foreground inline-flex cursor-pointer items-center gap-1 disabled:cursor-not-allowed"
-              onClick={() => onFork(index)}
-              disabled={isForking}
-            >
-              <GitBranch className="size-3.5" />
-              Fork
-            </button>
-            <span className="relative inline-flex">
-              <button
-                type="button"
-                className="hover:text-foreground inline-flex cursor-pointer items-center gap-1"
-                onClick={() => onCopy(textContent, index)}
-              >
-                <Copy className="size-3.5" />
-                Copy
-              </button>
-              {isCopied && (
-                <span className="bg-background text-foreground pointer-events-none absolute top-1/2 left-full ml-2 -translate-y-1/2 rounded border px-2 py-1 text-[10px] shadow">
-                  Copied
-                </span>
-              )}
-            </span>
-          </div>
-        )}
-      </div>
+      ) : null}
     </div>
   );
 }

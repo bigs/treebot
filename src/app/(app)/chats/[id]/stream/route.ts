@@ -1,4 +1,5 @@
 import { streamText, convertToModelMessages, type UIMessage } from "ai";
+import { randomUUID } from "crypto";
 import { getSession } from "@/lib/auth";
 import {
   getChatById,
@@ -63,7 +64,11 @@ export async function POST(
     originalMessages: uiMessages,
     sendReasoning: true,
     onFinish: ({ messages }) => {
-      updateChatMessages(chatId, session.sub, messages);
+      const normalizedMessages = messages.map((message) =>
+        message.id?.trim() ? message : { ...message, id: randomUUID() },
+      );
+
+      updateChatMessages(chatId, session.sub, normalizedMessages);
 
       const shouldRegenerateTitle =
         chat.parentId != null && chat.updatedAt === chat.createdAt;
@@ -74,7 +79,7 @@ export async function POST(
           userId: session.sub,
           platform,
           modelId: chat.model,
-          messages,
+          messages: normalizedMessages,
           mode: shouldRegenerateTitle ? "history" : "summary",
         }).catch(() => {
           /* title generation is best-effort */
