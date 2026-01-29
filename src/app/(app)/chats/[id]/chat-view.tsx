@@ -6,6 +6,8 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 import { ArrowUp, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -218,7 +220,10 @@ function MessageBubble({ message }: { message: UIMessage }) {
     <div className="flex justify-start">
       <div className="max-w-[80%]">
         <div className="prose prose-sm dark:prose-invert max-w-none">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm, remarkMath]}
+            rehypePlugins={[rehypeKatex]}
+          >
             {textContent}
           </ReactMarkdown>
         </div>
