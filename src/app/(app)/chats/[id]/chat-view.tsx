@@ -120,8 +120,19 @@ export function ChatView({
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, []);
+
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen flex-col overflow-hidden">
       <header className="border-b px-4 py-3">
         <div className="flex items-center gap-3">
           <h1 className="text-sm font-medium">{title ?? modelName}</h1>
@@ -166,6 +177,8 @@ function ChatBody({
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const autoTriggeredRef = useRef(false);
+  const scrollContainerRef = useRef<HTMLElement | null>(null);
+  const initialScrollRef = useRef(true);
 
   const [transport] = useState(
     () => new DefaultChatTransport({ api: `/chats/${chatId}/stream` })
@@ -195,7 +208,11 @@ function ChatBody({
 
   // Auto-scroll on new messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const behavior = initialScrollRef.current ? "auto" : "smooth";
+    container.scrollTo({ top: container.scrollHeight, behavior });
+    initialScrollRef.current = false;
   }, [chat.messages]);
 
   function handleSubmit(e: React.SyntheticEvent) {
@@ -208,7 +225,10 @@ function ChatBody({
 
   return (
     <>
-      <main className="flex-1 overflow-y-auto">
+      <main
+        ref={scrollContainerRef}
+        className="min-h-0 flex-1 overflow-y-auto"
+      >
         <div className="mx-auto max-w-3xl px-4 py-6">
           <div className="space-y-6">
             {chat.messages.map((message, index) => (
