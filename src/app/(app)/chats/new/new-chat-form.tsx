@@ -32,7 +32,7 @@ function validReasoningForModel(
 
 export function NewChatForm({ models }: { models: ModelInfo[] }) {
   const initialDefaultModel =
-    models.find((m) => m.id === DEFAULT_MODEL_ID) ?? null;
+    models.find((m) => m.id === DEFAULT_MODEL_ID) ?? models[0] ?? null;
   const initialDefaultReasoning = initialDefaultModel
     ? validReasoningForModel(initialDefaultModel, DEFAULT_REASONING)
     : "";
@@ -51,28 +51,26 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
   // Hydrate from localStorage after mount to avoid SSR mismatch
   useEffect(() => {
     const storedId = localStorage.getItem(LS_MODEL_KEY);
-    if (storedId && models.some((m) => m.id === storedId)) {
-      setSelectedModelId(storedId);
-      const model = models.find((m) => m.id === storedId);
-      if (model && model.reasoningLevels.length > 0) {
-        const storedLevel = localStorage.getItem(LS_REASONING_KEY);
-        setReasoningLevel(validReasoningForModel(model, storedLevel ?? ""));
-      }
-      return;
-    }
+    const storedModel = storedId
+      ? models.find((m) => m.id === storedId)
+      : null;
+    const fallbackModel =
+      models.find((m) => m.id === DEFAULT_MODEL_ID) ?? models[0] ?? null;
+    const resolvedModel = storedModel ?? fallbackModel;
+    if (!resolvedModel) return;
 
-    const defaultModel = models.find((m) => m.id === DEFAULT_MODEL_ID);
-    if (defaultModel) {
-      setSelectedModelId(defaultModel.id);
-      localStorage.setItem(LS_MODEL_KEY, defaultModel.id);
-      if (defaultModel.reasoningLevels.length > 0) {
-        const next = validReasoningForModel(
-          defaultModel,
-          DEFAULT_REASONING
-        );
-        setReasoningLevel(next);
-        localStorage.setItem(LS_REASONING_KEY, next);
-      }
+    setSelectedModelId(resolvedModel.id);
+    localStorage.setItem(LS_MODEL_KEY, resolvedModel.id);
+
+    if (resolvedModel.reasoningLevels.length > 0) {
+      const storedLevel = storedModel
+        ? localStorage.getItem(LS_REASONING_KEY)
+        : DEFAULT_REASONING;
+      const next = validReasoningForModel(resolvedModel, storedLevel ?? "");
+      setReasoningLevel(next);
+      localStorage.setItem(LS_REASONING_KEY, next);
+    } else {
+      setReasoningLevel("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
   }, []);
