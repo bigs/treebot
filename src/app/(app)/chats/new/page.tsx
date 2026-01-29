@@ -12,10 +12,8 @@ export default async function NewChatPage() {
     redirect("/login");
   }
 
-  const [allModels, userApiKeys] = await Promise.all([
-    getModels(),
-    getApiKeysByUser(session.sub),
-  ]);
+  const allModels = await getModels();
+  const userApiKeys = getApiKeysByUser(session.sub);
 
   const activePlatforms = new Set(userApiKeys.map((k) => k.platform));
   const availableModels = allModels.filter((m) =>

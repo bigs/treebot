@@ -57,6 +57,7 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
 
   useEffect(() => {
     if (!renameOpen) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync state when dialog opens
     setRenameValue(node.title);
   }, [node.title, renameOpen]);
 
@@ -205,7 +206,7 @@ export function ChatTree({ nodes }: { nodes: ChatNode[] }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!pathname?.startsWith("/chats/")) return;
+    if (!pathname.startsWith("/chats/")) return;
     const activeId = pathname.split("/chats/")[1];
     if (!activeId) return;
 

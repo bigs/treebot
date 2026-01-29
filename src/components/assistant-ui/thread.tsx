@@ -23,7 +23,6 @@ import {
   SuggestionPrimitive,
   ThreadPrimitive,
   useAuiState,
-  useMessage,
 } from "@assistant-ui/react";
 import {
   ArrowDownIcon,
@@ -322,6 +321,7 @@ const AssistantMessage: FC = () => {
 
 async function copyToClipboard(text: string): Promise<boolean> {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- clipboard may be undefined in non-secure contexts
     if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(text);
       return true;
@@ -333,6 +333,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
     textarea.style.opacity = "0";
     document.body.appendChild(textarea);
     textarea.select();
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- fallback for non-secure contexts
     document.execCommand("copy");
     document.body.removeChild(textarea);
     return true;
@@ -356,15 +357,16 @@ function getMessageText(content: readonly unknown[]): string {
 
 const CopyMessageButton: FC = () => {
   const [isCopied, setIsCopied] = useState(false);
-  const content = useMessage((m) => m.content);
+  const content = useAuiState(({ message }) => message.content);
 
-  const handleCopy = async () => {
+  const handleCopy = () => {
     const text = getMessageText(content);
-    const success = await copyToClipboard(text);
-    if (success) {
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
-    }
+    void copyToClipboard(text).then((success) => {
+      if (success) {
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+      }
+    });
   };
 
   return (
@@ -376,7 +378,7 @@ const CopyMessageButton: FC = () => {
 
 const ForkButton: FC = () => {
   const onFork = useContext(ForkContext);
-  const messageId = useMessage((m) => m.id);
+  const messageId = useAuiState(({ message }) => message.id);
   const messages = useAuiState(({ thread }) => thread.messages);
 
   const handleFork = () => {

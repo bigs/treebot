@@ -36,7 +36,7 @@ const CodeHeader: FC<CodeHeaderProps> = ({ language, code }) => {
   const { isCopied, copyToClipboard } = useCopyToClipboard();
   const onCopy = () => {
     if (!code || isCopied) return;
-    copyToClipboard(code);
+    void copyToClipboard(code);
   };
 
   return (
@@ -63,6 +63,7 @@ const useCopyToClipboard = ({
     if (!value) return;
 
     try {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- clipboard may be undefined in non-secure contexts
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(value);
       } else {
@@ -73,6 +74,7 @@ const useCopyToClipboard = ({
         textarea.style.opacity = "0";
         document.body.appendChild(textarea);
         textarea.select();
+        // eslint-disable-next-line @typescript-eslint/no-deprecated -- fallback for non-secure contexts
         document.execCommand("copy");
         document.body.removeChild(textarea);
       }

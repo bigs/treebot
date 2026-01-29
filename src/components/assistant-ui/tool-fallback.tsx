@@ -71,7 +71,7 @@ function ToolFallbackRoot({
       )}
       style={
         {
-          "--animation-duration": `${ANIMATION_DURATION}ms`,
+          "--animation-duration": `${String(ANIMATION_DURATION)}ms`,
         } as React.CSSProperties
       }
       {...props}
@@ -275,7 +275,7 @@ const ToolFallbackImpl: ToolCallMessagePartComponent = ({
   status,
 }) => {
   const isCancelled =
-    status?.type === "incomplete" && status.reason === "cancelled";
+    status.type === "incomplete" && status.reason === "cancelled";
 
   return (
     <ToolFallbackRoot
@@ -288,6 +288,7 @@ const ToolFallbackImpl: ToolCallMessagePartComponent = ({
           argsText={argsText}
           className={cn(isCancelled && "opacity-60")}
         />
+        {/* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- result is unknown from ToolCallMessagePartComponent */}
         {!isCancelled && <ToolFallbackResult result={result} />}
       </ToolFallbackContent>
     </ToolFallbackRoot>

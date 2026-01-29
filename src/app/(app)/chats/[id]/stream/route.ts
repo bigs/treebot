@@ -66,7 +66,7 @@ export async function POST(
     sendReasoning: true,
     onFinish: ({ messages }) => {
       const normalizedMessages = messages.map((message) =>
-        message.id?.trim() ? message : { ...message, id: randomUUID() },
+        message.id.trim() ? message : { ...message, id: randomUUID() },
       );
 
       updateChatMessages(chatId, session.sub, normalizedMessages);

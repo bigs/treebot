@@ -84,7 +84,7 @@ function ReasoningRoot({
       )}
       style={
         {
-          "--animation-duration": `${ANIMATION_DURATION}ms`,
+          "--animation-duration": `${String(ANIMATION_DURATION)}ms`,
         } as React.CSSProperties
       }
       {...props}
@@ -125,7 +125,7 @@ function ReasoningTrigger({
   active?: boolean;
   duration?: number;
 }) {
-  const durationText = duration ? ` (${duration}s)` : "";
+  const durationText = duration ? ` (${String(duration)}s)` : "";
 
   return (
     <CollapsibleTrigger

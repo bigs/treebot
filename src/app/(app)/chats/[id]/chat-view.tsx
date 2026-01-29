@@ -39,7 +39,7 @@ const toThreadMessageLike = (
   message: UIMessage,
   idx: number,
 ): ThreadMessageLike => {
-  const resolvedId = message.id?.trim() ? message.id : `message-${idx}`;
+  const resolvedId = message.id.trim() ? message.id : `message-${String(idx)}`;
   // Build content array - using explicit type to avoid readonly issues
   const contentArr: Array<
     | { type: "text"; text: string }
@@ -109,7 +109,7 @@ const toThreadMessageLike = (
   return {
     role: message.role,
     id: resolvedId,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
     content: contentArr as any,
   };
 };
@@ -154,10 +154,12 @@ export function ChatView({
       }
       pollActiveRef.current = false;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync prop to state
     setTitle(initialTitle);
   }, [initialTitle]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount detection pattern
     setMounted(true);
   }, []);
 
@@ -209,10 +211,10 @@ export function ChatView({
         return;
       }
 
-      pollTimeoutRef.current = window.setTimeout(poll, intervalMs);
+      pollTimeoutRef.current = window.setTimeout(() => void poll(), intervalMs);
     };
 
-    pollTimeoutRef.current = window.setTimeout(poll, intervalMs);
+    pollTimeoutRef.current = window.setTimeout(() => void poll(), intervalMs);
   }
 
   useEffect(() => {
@@ -309,13 +311,14 @@ function ChatBody({
         await chat.sendMessage({ text });
       },
       onCancel: async () => {
-        chat.stop();
+        await chat.stop();
       },
       onReload: async () => {
-        chat.regenerate();
+        await chat.regenerate();
       },
       convertMessage: (message, idx) => toThreadMessageLike(message, idx),
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- specific chat properties are more stable than `chat` object
     [chat.messages, chat.status, chat.sendMessage, chat.stop, chat.regenerate],
   );
 
@@ -358,7 +361,7 @@ function ChatBody({
     <div className="min-h-0 flex-1">
       {mounted ? (
         <AssistantRuntimeProvider runtime={runtime}>
-          <Thread onFork={handleFork} />
+          <Thread onFork={(idx) => void handleFork(idx)} />
         </AssistantRuntimeProvider>
       ) : null}
       {chat.error ? (

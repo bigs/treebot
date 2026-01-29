@@ -30,6 +30,7 @@ const useFileSrc = (file: File | undefined) => {
 
   useEffect(() => {
     if (!file) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- cleanup state when file removed
       setSrc(undefined);
       return;
     }
@@ -67,6 +68,7 @@ type AttachmentPreviewProps = {
 const AttachmentPreview: FC<AttachmentPreviewProps> = ({ src }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   return (
+    // eslint-disable-next-line @next/next/no-img-element -- dynamic blob URLs not compatible with next/image
     <img
       src={src}
       alt="Image Preview"
@@ -140,7 +142,7 @@ const AttachmentUI: FC = () => {
         return "File";
       default:
         const _exhaustiveCheck: never = type;
-        throw new Error(`Unknown attachment type: ${_exhaustiveCheck}`);
+        throw new Error(`Unknown attachment type: ${_exhaustiveCheck as string}`);
     }
   });
 
