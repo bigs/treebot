@@ -133,8 +133,9 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && canSubmit) {
-            handleSubmit(e);
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            if (canSubmit) handleSubmit(e);
           }
         }}
       />
