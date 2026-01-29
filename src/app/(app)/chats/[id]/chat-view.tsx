@@ -206,17 +206,35 @@ function MessageBubble({ message }: { message: UIMessage }) {
     .map((p) => p.text)
     .join("");
 
-  const reasoningContent = message.parts
-    .filter((p): p is { type: "reasoning"; text: string } =>
-      p.type === "reasoning"
-    )
-    .map((p) => p.text)
-    .join("");
+  const reasoningParts = message.parts.filter(
+    (p): p is { type: "reasoning"; text: string } => p.type === "reasoning"
+  );
 
-  const reasoningLine = reasoningContent
+  const reasoningContent = reasoningParts
+    .map((p) => p.text)
+    .join("\n\n");
+
+  const reasoningLines = reasoningContent
     .split(/\r?\n/)
-    .find((line) => line.trim().length > 0)
-    ?.trim();
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  const latestReasoningPart = reasoningParts.at(-1)?.text ?? "";
+  const latestReasoningLines = latestReasoningPart
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  const previewLine = (() => {
+    const titleLine = latestReasoningLines[0];
+    if (!titleLine) return undefined;
+    const isBoldOnly = /^\*\*[^*]+\*\*$/.test(titleLine);
+    const bodyLine = latestReasoningLines[1];
+    if (isBoldOnly && bodyLine) {
+      return `${titleLine}: ${bodyLine}`;
+    }
+    return titleLine;
+  })();
 
   if (isUser) {
     return (
@@ -232,19 +250,36 @@ function MessageBubble({ message }: { message: UIMessage }) {
     <div className="flex justify-start">
       <div className="max-w-[80%] space-y-2">
         {reasoningContent.trim().length > 0 && (
-          <details className="rounded-lg border bg-muted/30">
+          <details className="group rounded-lg border bg-muted/30">
             <summary className="cursor-pointer list-none px-3 py-2 text-xs text-muted-foreground">
               <div className="flex items-center gap-2">
-                <span className="font-medium text-foreground/80">
-                  Reasoning
+                <span
+                  className="arrow text-muted-foreground/70 flex h-5 w-5 items-center justify-center text-[28px] leading-none transition-transform duration-150"
+                  aria-hidden
+                  style={{ marginTop: -2 }}
+                >
+                  ▸
                 </span>
                 <span className="truncate">
-                  {reasoningLine ?? "Thinking…"}
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm, remarkMath]}
+                    rehypePlugins={[rehypeKatex]}
+                    components={{
+                      p: ({ children }) => <span>{children}</span>,
+                    }}
+                  >
+                    {previewLine ?? "Thinking…"}
+                  </ReactMarkdown>
                 </span>
               </div>
             </summary>
-            <div className="border-t px-3 py-2 text-xs text-muted-foreground whitespace-pre-wrap">
-              {reasoningContent}
+            <div className="border-t px-3 py-2 text-xs text-muted-foreground">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm, remarkMath]}
+                rehypePlugins={[rehypeKatex]}
+              >
+                {reasoningContent}
+              </ReactMarkdown>
             </div>
           </details>
         )}

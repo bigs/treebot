@@ -124,3 +124,7 @@
     @apply bg-background text-foreground;
   }
 }
+
+details[open] summary .arrow {
+  transform: rotate(90deg);
+}
