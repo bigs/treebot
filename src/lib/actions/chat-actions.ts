@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { createChat, deleteChatWithChildren } from "@/db/queries";
+import { generateChatTitle } from "@/lib/chat-title";
 import type { Platform } from "@/db/schema";
 import type { ModelParams } from "@/lib/models";
 
@@ -50,6 +51,16 @@ export async function createChatAction(input: {
     messages,
     modelParams
   );
+
+  generateChatTitle({
+    chatId: chat.id,
+    userId: session.sub,
+    platform: provider as Platform,
+    modelId: input.model,
+    prompt: message,
+  }).catch(() => {
+    /* title generation is best-effort */
+  });
 
   revalidatePath("/", "layout");
 

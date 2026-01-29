@@ -1,18 +1,13 @@
-import {
-  streamText,
-  generateText,
-  convertToModelMessages,
-  type UIMessage,
-} from "ai";
+import { streamText, convertToModelMessages, type UIMessage } from "ai";
 import { getSession } from "@/lib/auth";
 import {
   getChatById,
   getApiKeyByUserAndPlatform,
   updateChatMessages,
-  updateChatTitle,
 } from "@/db/queries";
 import { decrypt } from "@/lib/crypto";
 import { createModel, buildProviderOptions, SYSTEM_PROMPT } from "@/lib/ai";
+import { generateChatTitle } from "@/lib/chat-title";
 import type { Platform } from "@/db/schema";
 import type { ModelParams } from "@/lib/models";
 
@@ -68,62 +63,16 @@ export async function POST(
       updateChatMessages(chatId, session.sub, messages);
 
       if (chat.title == null) {
-        generateTitle(
+        generateChatTitle({
           chatId,
-          session.sub,
-          messages,
+          userId: session.sub,
           platform,
-          apiKey,
-          chat.model
-        ).catch(() => {
+          modelId: chat.model,
+          messages,
+        }).catch(() => {
           /* title generation is best-effort */
         });
       }
     },
   });
-}
-
-async function generateTitle(
-  chatId: string,
-  userId: number,
-  messages: UIMessage[],
-  platform: Platform,
-  apiKey: string,
-  modelId: string
-) {
-  // Try Google Flash for cheap title generation if the user has a Google key
-  let titleModel;
-  let titleProviderOptions;
-
-  if (platform === "google") {
-    titleModel = createModel("google", apiKey, "gemini-2.0-flash");
-    titleProviderOptions = buildProviderOptions("google", "minimal");
-  } else {
-    // Use the chat's own model
-    titleModel = createModel(platform, apiKey, modelId);
-    titleProviderOptions = buildProviderOptions(platform, "none");
-  }
-
-  const conversationSummary = messages
-    .filter((m) => m.role === "user" || m.role === "assistant")
-    .slice(0, 4)
-    .map((m) => {
-      const text = m.parts
-        .filter((p): p is { type: "text"; text: string } => p.type === "text")
-        .map((p) => p.text)
-        .join(" ");
-      return `${m.role}: ${text.slice(0, 200)}`;
-    })
-    .join("\n");
-
-  const { text: title } = await generateText({
-    model: titleModel,
-    providerOptions: titleProviderOptions,
-    prompt: `Generate a short title (2-6 words) for this conversation. Return ONLY the title, no quotes or punctuation.\n\n${conversationSummary}`,
-  });
-
-  const cleaned = title.trim().replace(/^["']|["']$/g, "");
-  if (cleaned) {
-    updateChatTitle(chatId, userId, cleaned);
-  }
 }
