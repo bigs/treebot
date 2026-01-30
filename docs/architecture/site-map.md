@@ -22,6 +22,8 @@ This is the current route map for the application, grouped by access level.
 
 - `POST /chats/[id]/stream` stream assistant responses.
 - `POST /chats/[id]/fork` create a forked chat from a message index.
+- `POST /chats/[id]/handoff/preview` generate a handoff summary preview.
+- `POST /chats/[id]/handoff` create a handoff child chat from the approved summary.
 - `GET /chats/[id]/title` fetch the latest title for a chat.
 
 See [API routes](../api/routes.md) for request/response details.
