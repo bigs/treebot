@@ -20,13 +20,14 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
   const processed = normalizeMathDelimiters(content);
 
   return (
-    <ReactMarkdown
-      className={cn("aui-md", className)}
-      remarkPlugins={[remarkGfm, remarkMath]}
-      rehypePlugins={[[rehypeKatex, { strict: "ignore" }]]}
-      components={markdownComponents as Components}
-    >
-      {processed}
-    </ReactMarkdown>
+    <div className={cn("aui-md", className)}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[[rehypeKatex, { strict: "ignore" }]]}
+        components={markdownComponents as Components}
+      >
+        {processed}
+      </ReactMarkdown>
+    </div>
   );
 }
