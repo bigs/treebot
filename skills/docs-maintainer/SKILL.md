@@ -29,6 +29,8 @@ python3 - <<'PY'
 import os, re
 root = "docs"
 missing = []
+if not os.path.isdir(root):
+    raise SystemExit('docs directory not found. Run from repo root.')
 link_re = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 for dirpath, _, filenames in os.walk(root):
     for fn in filenames:
