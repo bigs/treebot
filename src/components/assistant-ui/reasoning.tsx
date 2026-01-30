@@ -68,7 +68,7 @@ function ReasoningRoot({
       }
       controlledOnOpenChange?.(open);
     },
-    [lockScroll, isControlled, controlledOnOpenChange],
+    [lockScroll, isControlled, controlledOnOpenChange]
   );
 
   return (
@@ -80,7 +80,7 @@ function ReasoningRoot({
       onOpenChange={handleOpenChange}
       className={cn(
         "group/reasoning-root",
-        reasoningVariants({ variant, className }),
+        reasoningVariants({ variant, className })
       )}
       style={
         {
@@ -109,7 +109,7 @@ function ReasoningFade({ className, ...props }: React.ComponentProps<"div">) {
         "group-data-[state=open]/collapsible-content:fill-mode-forwards",
         "duration-(--animation-duration)",
         "group-data-[state=open]/collapsible-content:duration-(--animation-duration)",
-        className,
+        className
       )}
       {...props}
     />
@@ -131,8 +131,8 @@ function ReasoningTrigger({
     <CollapsibleTrigger
       data-slot="reasoning-trigger"
       className={cn(
-        "aui-reasoning-trigger group/trigger flex max-w-[75%] items-center gap-2 py-1 text-muted-foreground text-sm transition-colors hover:text-foreground",
-        className,
+        "aui-reasoning-trigger group/trigger text-muted-foreground hover:text-foreground flex max-w-[75%] items-center gap-2 py-1 text-sm transition-colors",
+        className
       )}
       {...props}
     >
@@ -161,7 +161,7 @@ function ReasoningTrigger({
           "aui-reasoning-trigger-chevron mt-0.5 size-4 shrink-0",
           "transition-transform duration-(--animation-duration) ease-out",
           "group-data-[state=closed]/trigger:-rotate-90",
-          "group-data-[state=open]/trigger:rotate-0",
+          "group-data-[state=open]/trigger:rotate-0"
         )}
       />
     </CollapsibleTrigger>
@@ -177,7 +177,7 @@ function ReasoningContent({
     <CollapsibleContent
       data-slot="reasoning-content"
       className={cn(
-        "aui-reasoning-content relative overflow-hidden text-muted-foreground text-sm outline-none",
+        "aui-reasoning-content text-muted-foreground relative overflow-hidden text-sm outline-none",
         "group/collapsible-content ease-out",
         "data-[state=closed]:animate-collapsible-up",
         "data-[state=open]:animate-collapsible-down",
@@ -185,7 +185,7 @@ function ReasoningContent({
         "data-[state=closed]:pointer-events-none",
         "data-[state=open]:duration-(--animation-duration)",
         "data-[state=closed]:duration-(--animation-duration)",
-        className,
+        className
       )}
       {...props}
     >
@@ -210,7 +210,7 @@ function ReasoningText({ className, ...props }: React.ComponentProps<"div">) {
         "group-data-[state=closed]/collapsible-content:slide-out-to-top-4",
         "group-data-[state=open]/collapsible-content:duration-(--animation-duration)",
         "group-data-[state=closed]/collapsible-content:duration-(--animation-duration)",
-        className,
+        className
       )}
       {...props}
     />
@@ -263,7 +263,7 @@ const ReasoningGroupImpl: ReasoningGroupComponent = ({
 };
 
 const Reasoning = memo(
-  ReasoningImpl,
+  ReasoningImpl
 ) as unknown as ReasoningMessagePartComponent & {
   Root: typeof ReasoningRoot;
   Trigger: typeof ReasoningTrigger;

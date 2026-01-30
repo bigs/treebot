@@ -48,7 +48,10 @@ export function buildProviderOptions(
   if (platform === "google") {
     return {
       google: {
-        thinkingConfig: { thinkingLevel: reasoningEffort, includeThoughts: true },
+        thinkingConfig: {
+          thinkingLevel: reasoningEffort,
+          includeThoughts: true,
+        },
       },
     };
   }

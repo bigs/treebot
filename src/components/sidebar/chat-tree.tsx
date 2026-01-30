@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronRight, Ellipsis, MessageSquare, Pencil, Trash2 } from "lucide-react";
+import {
+  ChevronRight,
+  Ellipsis,
+  MessageSquare,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { useSidebar } from "./sidebar-context";
 import { deleteChatAction, renameChatAction } from "@/lib/actions/chat-actions";
 import {
@@ -45,7 +51,7 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
   async function handleDelete() {
     const idsToDelete = new Set(collectIds(node));
     const isViewingDeleted =
-      pathname?.startsWith("/chats/") &&
+      pathname.startsWith("/chats/") &&
       idsToDelete.has(pathname.split("/chats/")[1]);
 
     await deleteChatAction(node.id);
@@ -87,7 +93,7 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
             <button
               type="button"
               aria-label={isExpanded ? "Collapse chat" : "Expand chat"}
-              className="inline-flex size-4 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground inline-flex size-4 shrink-0 items-center justify-center"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -206,7 +212,7 @@ export function ChatTree({ nodes }: { nodes: ChatNode[] }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!pathname?.startsWith("/chats/")) return;
+    if (!pathname.startsWith("/chats/")) return;
     const activeId = pathname.split("/chats/")[1];
     if (!activeId) return;
 

@@ -7,7 +7,12 @@ import {
   updateChatMessages,
 } from "@/db/queries";
 import { decrypt } from "@/lib/crypto";
-import { buildProviderOptions, buildTools, createModel, getSystemPrompt } from "@/lib/ai";
+import {
+  buildProviderOptions,
+  buildTools,
+  createModel,
+  getSystemPrompt,
+} from "@/lib/ai";
 import { generateChatTitle } from "@/lib/chat-title";
 import type { Platform } from "@/db/schema";
 import type { ModelParams } from "@/lib/models";
@@ -66,7 +71,7 @@ export async function POST(
     sendReasoning: true,
     onFinish: ({ messages }) => {
       const normalizedMessages = messages.map((message) =>
-        message.id.trim() ? message : { ...message, id: randomUUID() },
+        message.id.trim() ? message : { ...message, id: randomUUID() }
       );
 
       updateChatMessages(chatId, session.sub, normalizedMessages);
