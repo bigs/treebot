@@ -29,7 +29,7 @@ python3 - <<'PY'
 import os, re
 root = "docs"
 missing = []
-link_re = re.compile(r"\\[[^\\]]*\\]\\(([^)]+)\\)")
+link_re = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 for dirpath, _, filenames in os.walk(root):
     for fn in filenames:
         if not fn.endswith(".md"):
