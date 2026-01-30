@@ -52,12 +52,7 @@ export async function POST(
     storedParams?.reasoning_effort
   );
   const model = createModel(platform, apiKey, chat.model);
-  const tools = buildTools(
-    platform,
-    apiKey,
-    chat.model,
-    storedParams?.reasoning_effort
-  );
+  const tools = buildTools(platform, apiKey);
 
   let modelMessagesInput = uiMessages;
   try {

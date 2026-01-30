@@ -70,17 +70,15 @@ export async function generateChatTitle({
 
   let titleModel;
   let titleProviderOptions;
-  let tools: Record<string, unknown>;
 
   if (platform === "google") {
     titleModel = createModel("google", apiKey, "gemini-3-flash-preview");
     titleProviderOptions = buildProviderOptions("google", "minimal");
-    tools = buildTools("google", apiKey, "gemini-3-flash-preview", "minimal");
   } else {
     titleModel = createModel(platform, apiKey, modelId);
     titleProviderOptions = buildProviderOptions(platform, "none");
-    tools = buildTools(platform, apiKey, modelId, "none");
   }
+  const tools = buildTools(platform, apiKey);
 
   const conversationSummary = messages
     ? mode === "history"
