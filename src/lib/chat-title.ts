@@ -96,7 +96,8 @@ export async function generateChatTitle({
   const { text: title } = await generateText({
     model: titleModel,
     providerOptions: titleProviderOptions,
-    tools,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    tools: tools as any,
     prompt: `${promptHeader}\n\n${conversationSummary}`,
   });
 

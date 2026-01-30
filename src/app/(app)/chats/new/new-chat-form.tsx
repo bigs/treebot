@@ -69,6 +69,7 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
         effectiveReasoning
       );
 
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- initialize from localStorage
       setSelection({
         modelId: resolvedModel.id,
         reasoningLevel: finalReasoning,
@@ -88,8 +89,10 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
 
   // Fallback for reasoningLevel if it's empty but shouldn't be
   useEffect(() => {
-    if (showReasoning && selection.reasoningLevel === "" && selectedModel) {
+    if (showReasoning && selection.reasoningLevel === "") {
+      // selectedModel is guaranteed non-null when showReasoning is true
       const fallback = selectedModel.defaultReasoningLevel;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync derived state
       setSelection((prev) => ({
         ...prev,
         reasoningLevel: fallback,

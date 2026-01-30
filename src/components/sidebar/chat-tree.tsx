@@ -45,7 +45,7 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
   async function handleDelete() {
     const idsToDelete = new Set(collectIds(node));
     const isViewingDeleted =
-      pathname.startsWith("/chats/") &&
+      pathname?.startsWith("/chats/") &&
       idsToDelete.has(pathname.split("/chats/")[1]);
 
     await deleteChatAction(node.id);
@@ -57,6 +57,7 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
 
   useEffect(() => {
     if (!renameOpen) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync state when dialog opens
     setRenameValue(node.title);
   }, [node.title, renameOpen]);
 

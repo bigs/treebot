@@ -27,12 +27,13 @@ export function buildTools(
   platform: Platform,
   apiKey: string
 ): Record<string, unknown> {
-  const provider = createProvider(platform, apiKey);
   if (platform === "google") {
+    const provider = createGoogleGenerativeAI({ apiKey });
     return {
       google_search: provider.tools.googleSearch({}),
     };
   }
+  const provider = createOpenAI({ apiKey });
   return {
     web_search: provider.tools.webSearch({}),
   };
