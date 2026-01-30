@@ -84,8 +84,7 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
   return (
     <div>
       <div className="group relative">
-        <Link
-          href={`/chats/${node.id}`}
+        <div
           className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 pr-8 text-left text-sm ${isActive ? "bg-black/6 font-medium dark:bg-white/8" : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
           style={{ paddingLeft: `${String(depth * 12 + 8)}px` }}
         >
@@ -104,11 +103,17 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
                 className={`size-4 transition-transform ${isExpanded ? "rotate-90" : ""}`}
               />
             </button>
-          ) : (
-            <MessageSquare className="size-4 shrink-0" />
-          )}
-          <span className="truncate">{node.title}</span>
-        </Link>
+          ) : null}
+          <Link
+            href={`/chats/${node.id}`}
+            className="flex min-w-0 flex-1 items-center gap-2"
+          >
+            {!hasChildren ? (
+              <MessageSquare className="size-4 shrink-0" />
+            ) : null}
+            <span className="truncate">{node.title}</span>
+          </Link>
+        </div>
 
         <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
           <DropdownMenuTrigger asChild>
