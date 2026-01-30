@@ -65,6 +65,86 @@ Creates a forked chat from a specific message index.
 - `400 Index out of range` if the index exceeds the message list.
 - `400 Invalid chat messages` if stored messages are malformed.
 
+## POST /chats/[id]/handoff/preview
+
+Generates a handoff summary preview for a selected assistant message.
+
+**File:** `src/app/(app)/chats/[id]/handoff/preview/route.ts`
+
+**Auth:** Required (session cookie)
+
+**Request body:**
+
+```json
+{
+  "index": 3,
+  "messages": ["UIMessage", "..."]
+}
+```
+
+- `index` is a zero-based integer pointing at the assistant message to hand off from.
+- `messages` is the full compaction conversation, including the truncated chat history and the synthetic handoff prompt.
+
+**Response:**
+
+```json
+{
+  "message": "UIMessage"
+}
+```
+
+- `message` is the assistant summary preview in `UIMessage` format.
+
+**Error responses:**
+
+- `401 Unauthorized` if not logged in.
+- `404 Not found` if the chat does not exist for the user.
+- `400 Invalid index` if `index` is missing or not an integer.
+- `400 Index out of range` if the index exceeds the message list.
+- `400 Invalid chat messages` if stored messages are malformed.
+- `400 Invalid messages` if the compaction payload is malformed.
+- `400 Handoff only supported for assistant messages` if the index points to a user message.
+- `400 No API key configured for <platform>` if the user lacks a provider key.
+
+## POST /chats/[id]/handoff
+
+Creates a handoff child chat from the approved summary text.
+
+**File:** `src/app/(app)/chats/[id]/handoff/route.ts`
+
+**Auth:** Required (session cookie)
+
+**Request body:**
+
+```json
+{
+  "index": 3,
+  "text": "Approved summary text"
+}
+```
+
+- `index` is a zero-based integer pointing at the assistant message to hand off from.
+- `text` is the approved summary that becomes the first user message in the child chat.
+
+**Response:**
+
+```json
+{
+  "chatId": "new-chat-uuid"
+}
+```
+
+**Error responses:**
+
+- `401 Unauthorized` if not logged in.
+- `404 Not found` if the chat does not exist for the user.
+- `400 Invalid index` if `index` is missing or not an integer.
+- `400 Index out of range` if the index exceeds the message list.
+- `400 Invalid chat messages` if stored messages are malformed.
+- `400 Invalid text` if the approved summary is not a string.
+- `400 Text cannot be empty` if the approved summary is blank.
+- `400 Handoff only supported for assistant messages` if the index points to a user message.
+
 ## GET /chats/[id]/title
 
 Fetches the latest title and update timestamp for a chat.

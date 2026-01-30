@@ -56,7 +56,7 @@ function ToolFallbackRoot({
       }
       controlledOnOpenChange?.(open);
     },
-    [lockScroll, isControlled, controlledOnOpenChange],
+    [lockScroll, isControlled, controlledOnOpenChange]
   );
 
   return (
@@ -67,7 +67,7 @@ function ToolFallbackRoot({
       onOpenChange={handleOpenChange}
       className={cn(
         "aui-tool-fallback-root group/tool-fallback-root w-full rounded-lg border py-3",
-        className,
+        className
       )}
       style={
         {
@@ -112,7 +112,7 @@ function ToolFallbackTrigger({
       data-slot="tool-fallback-trigger"
       className={cn(
         "aui-tool-fallback-trigger group/trigger flex w-full items-center gap-2 px-4 text-sm transition-colors",
-        className,
+        className
       )}
       {...props}
     >
@@ -121,14 +121,14 @@ function ToolFallbackTrigger({
         className={cn(
           "aui-tool-fallback-trigger-icon size-4 shrink-0",
           isCancelled && "text-muted-foreground",
-          isRunning && "animate-spin",
+          isRunning && "animate-spin"
         )}
       />
       <span
         data-slot="tool-fallback-trigger-label"
         className={cn(
           "aui-tool-fallback-trigger-label-wrapper relative inline-block grow text-left leading-none",
-          isCancelled && "text-muted-foreground line-through",
+          isCancelled && "text-muted-foreground line-through"
         )}
       >
         <span>
@@ -150,7 +150,7 @@ function ToolFallbackTrigger({
           "aui-tool-fallback-trigger-chevron size-4 shrink-0",
           "transition-transform duration-(--animation-duration) ease-out",
           "group-data-[state=closed]/trigger:-rotate-90",
-          "group-data-[state=open]/trigger:rotate-0",
+          "group-data-[state=open]/trigger:rotate-0"
         )}
       />
     </CollapsibleTrigger>
@@ -174,7 +174,7 @@ function ToolFallbackContent({
         "data-[state=closed]:pointer-events-none",
         "data-[state=open]:duration-(--animation-duration)",
         "data-[state=closed]:duration-(--animation-duration)",
-        className,
+        className
       )}
       {...props}
     >
@@ -219,7 +219,7 @@ function ToolFallbackResult({
       data-slot="tool-fallback-result"
       className={cn(
         "aui-tool-fallback-result border-t border-dashed px-4 pt-2",
-        className,
+        className
       )}
       {...props}
     >
@@ -258,7 +258,7 @@ function ToolFallbackError({
       className={cn("aui-tool-fallback-error px-4", className)}
       {...props}
     >
-      <p className="aui-tool-fallback-error-header font-semibold text-muted-foreground">
+      <p className="aui-tool-fallback-error-header text-muted-foreground font-semibold">
         {headerText}
       </p>
       <p className="aui-tool-fallback-error-reason text-muted-foreground">
@@ -296,7 +296,7 @@ const ToolFallbackImpl: ToolCallMessagePartComponent = ({
 };
 
 const ToolFallback = memo(
-  ToolFallbackImpl,
+  ToolFallbackImpl
 ) as unknown as ToolCallMessagePartComponent & {
   Root: typeof ToolFallbackRoot;
   Trigger: typeof ToolFallbackTrigger;

@@ -57,7 +57,13 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
 
   return (
     <SidebarContext.Provider
-      value={{ collapsed, toggleSidebar, expandedChats, toggleChat, expandChats }}
+      value={{
+        collapsed,
+        toggleSidebar,
+        expandedChats,
+        toggleChat,
+        expandChats,
+      }}
     >
       {children}
     </SidebarContext.Provider>

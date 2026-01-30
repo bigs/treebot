@@ -49,7 +49,7 @@ export const SyntaxHighlighter: FC<HighlighterProps> = ({
       defaultColor="light-dark()"
       className={cn(
         "aui-shiki-base [&_pre]:overflow-x-auto [&_pre]:rounded-b-lg [&_pre]:p-4 [&_pre]:text-[0.65rem] [&_pre]:leading-relaxed",
-        className,
+        className
       )}
     >
       {code.trim()}

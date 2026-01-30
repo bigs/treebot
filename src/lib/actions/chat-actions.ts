@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
-import { createChat, deleteChatWithChildren, updateChatTitle } from "@/db/queries";
+import {
+  createChat,
+  deleteChatWithChildren,
+  updateChatTitle,
+} from "@/db/queries";
 import { generateChatTitle } from "@/lib/chat-title";
 import type { Platform } from "@/db/schema";
 import type { ModelParams } from "@/lib/models";

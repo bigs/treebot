@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronRight, Ellipsis, MessageSquare, Pencil, Trash2 } from "lucide-react";
+import {
+  ChevronRight,
+  Ellipsis,
+  MessageSquare,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { useSidebar } from "./sidebar-context";
 import { deleteChatAction, renameChatAction } from "@/lib/actions/chat-actions";
 import {
@@ -45,7 +51,7 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
   async function handleDelete() {
     const idsToDelete = new Set(collectIds(node));
     const isViewingDeleted =
-      pathname?.startsWith("/chats/") &&
+      pathname.startsWith("/chats/") &&
       idsToDelete.has(pathname.split("/chats/")[1]);
 
     await deleteChatAction(node.id);
@@ -78,8 +84,7 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
   return (
     <div>
       <div className="group relative">
-        <Link
-          href={`/chats/${node.id}`}
+        <div
           className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 pr-8 text-left text-sm ${isActive ? "bg-black/6 font-medium dark:bg-white/8" : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
           style={{ paddingLeft: `${String(depth * 12 + 8)}px` }}
         >
@@ -87,7 +92,7 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
             <button
               type="button"
               aria-label={isExpanded ? "Collapse chat" : "Expand chat"}
-              className="inline-flex size-4 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground inline-flex size-4 shrink-0 items-center justify-center"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -98,11 +103,17 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
                 className={`size-4 transition-transform ${isExpanded ? "rotate-90" : ""}`}
               />
             </button>
-          ) : (
-            <MessageSquare className="size-4 shrink-0" />
-          )}
-          <span className="truncate">{node.title}</span>
-        </Link>
+          ) : null}
+          <Link
+            href={`/chats/${node.id}`}
+            className="flex min-w-0 flex-1 items-center gap-2"
+          >
+            {!hasChildren ? (
+              <MessageSquare className="size-4 shrink-0" />
+            ) : null}
+            <span className="truncate">{node.title}</span>
+          </Link>
+        </div>
 
         <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
           <DropdownMenuTrigger asChild>
@@ -206,7 +217,7 @@ export function ChatTree({ nodes }: { nodes: ChatNode[] }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!pathname?.startsWith("/chats/")) return;
+    if (!pathname.startsWith("/chats/")) return;
     const activeId = pathname.split("/chats/")[1];
     if (!activeId) return;
 

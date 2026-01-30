@@ -3,8 +3,14 @@ export function normalizeMathDelimiters(markdown: string) {
 
   const applyReplacements = (value: string) =>
     value
-      .replace(/\\\[((?:.|\n)*?)\\\]/g, (_match, inner: string) => `$$${inner}$$`)
-      .replace(/\\\(((?:.|\n)*?)\\\)/g, (_match, inner: string) => `$${inner}$`);
+      .replace(
+        /\\\[((?:.|\n)*?)\\\]/g,
+        (_match, inner: string) => `$$${inner}$$`
+      )
+      .replace(
+        /\\\(((?:.|\n)*?)\\\)/g,
+        (_match, inner: string) => `$${inner}$`
+      );
 
   let result = "";
   let buffer = "";

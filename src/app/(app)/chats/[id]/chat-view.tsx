@@ -11,6 +11,16 @@ import {
   useExternalStoreRuntime,
 } from "@assistant-ui/react";
 import { Thread } from "@/components/assistant-ui/thread";
+import { MarkdownPreview } from "@/components/assistant-ui/markdown-preview";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -19,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { ReasoningOption } from "@/lib/models";
+import { Loader2 } from "lucide-react";
 
 interface ChatViewProps {
   chatId: string;
@@ -37,15 +48,29 @@ const isChatRunning = (status: string) =>
 
 const toThreadMessageLike = (
   message: UIMessage,
-  idx: number,
+  idx: number
 ): ThreadMessageLike => {
   const resolvedId = message.id.trim() ? message.id : `message-${String(idx)}`;
   // Build content array - using explicit type to avoid readonly issues
   const contentArr: Array<
     | { type: "text"; text: string }
     | { type: "reasoning"; text: string }
-    | { type: "source"; sourceType: "url"; id: string; url: string; title?: string }
-    | { type: "tool-call"; toolCallId: string; toolName: string; args: Record<string, unknown>; argsText: string; result: unknown; isError: boolean }
+    | {
+        type: "source";
+        sourceType: "url";
+        id: string;
+        url: string;
+        title?: string;
+      }
+    | {
+        type: "tool-call";
+        toolCallId: string;
+        toolName: string;
+        args: Record<string, unknown>;
+        argsText: string;
+        result: unknown;
+        isError: boolean;
+      }
     | { type: "data"; name: string; data: unknown }
   > = [];
   for (const part of message.parts) {
@@ -73,7 +98,7 @@ const toThreadMessageLike = (
       };
       const toolName =
         toolPart.type === "dynamic-tool"
-          ? toolPart.toolName ?? "tool"
+          ? (toolPart.toolName ?? "tool")
           : toolPart.type.slice("tool-".length);
       const toolCallId = toolPart.toolCallId ?? `${toolName}-${resolvedId}`;
       const input = toolPart.input;
@@ -114,6 +139,58 @@ const toThreadMessageLike = (
   };
 };
 
+const HANDOFF_PROMPT_QUESTION =
+  "Where do you want to lead the new conversation?";
+
+function extractTextFromParts(parts: UIMessage["parts"]) {
+  return parts
+    .filter(
+      (part): part is { type: "text"; text: string } => part.type === "text"
+    )
+    .map((part) => part.text)
+    .join("\n\n");
+}
+
+function buildHandoffPrompt(userPrompt: string) {
+  const trimmed = userPrompt.trim();
+  return `You are preparing a handoff summary from an ongoing conversation.
+
+Your task: compact and summarize the conversation so far, emphasizing details that are most relevant to the new direction the user wants to explore. Your response will be used as the first user message in a brand new conversation, so it must preserve the user's intent and include the context needed to continue.
+
+Output format requirements:
+- Start with a short "Context" section in bullet points.
+- Explicitly frame this as a continuation of an ongoing conversation.
+- Focus on salient details needed to continue in the new direction.
+- After the bullets, include a blank line, then reproduce the user's prompt verbatim as a natural paragraph (no label).
+
+The user's prompt for the handoff (include it verbatim at the end of your response) is:
+${trimmed}`;
+}
+
+function generateClientId() {
+  if (typeof crypto !== "undefined") {
+    if (typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+    if (typeof crypto.getRandomValues === "function") {
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      // UUID v4 format.
+      bytes[6] = (bytes[6] & 0x0f) | 0x40;
+      bytes[8] = (bytes[8] & 0x3f) | 0x80;
+      const hex = Array.from(bytes, (byte) =>
+        byte.toString(16).padStart(2, "0")
+      );
+      return `${hex.slice(0, 4).join("")}-${hex
+        .slice(4, 6)
+        .join("")}-${hex.slice(6, 8).join("")}-${hex
+        .slice(8, 10)
+        .join("")}-${hex.slice(10, 16).join("")}`;
+    }
+  }
+  return `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 export function ChatView({
   chatId,
   modelName,
@@ -136,10 +213,10 @@ export function ChatView({
   const pollEligibleRef = useRef(
     Boolean(
       initialParentId &&
-        initialCreatedAt &&
-        initialUpdatedAt &&
-        initialCreatedAt === initialUpdatedAt,
-    ),
+      initialCreatedAt &&
+      initialUpdatedAt &&
+      initialCreatedAt === initialUpdatedAt
+    )
   );
 
   // Sync title from server after router.refresh()
@@ -279,13 +356,26 @@ function ChatBody({
   const router = useRouter();
   const autoTriggeredRef = useRef(false);
   const [mounted, setMounted] = useState(false);
+  const [handoffPromptOpen, setHandoffPromptOpen] = useState(false);
+  const [handoffPreviewOpen, setHandoffPreviewOpen] = useState(false);
+  const [handoffPrompt, setHandoffPrompt] = useState("");
+  const [handoffFeedback, setHandoffFeedback] = useState("");
+  const [handoffMessages, setHandoffMessages] = useState<UIMessage[] | null>(
+    null
+  );
+  const [handoffPreviewMessage, setHandoffPreviewMessage] =
+    useState<UIMessage | null>(null);
+  const [handoffIndex, setHandoffIndex] = useState<number | null>(null);
+  const [handoffError, setHandoffError] = useState<string | null>(null);
+  const [handoffLoading, setHandoffLoading] = useState(false);
+  const [handoffAccepting, setHandoffAccepting] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   const [transport] = useState(
-    () => new DefaultChatTransport({ api: `/chats/${chatId}/stream` }),
+    () => new DefaultChatTransport({ api: `/chats/${chatId}/stream` })
   );
 
   const chat = useChat({
@@ -319,10 +409,37 @@ function ChatBody({
       convertMessage: (message, idx) => toThreadMessageLike(message, idx),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- specific chat properties are more stable than `chat` object
-    [chat.messages, chat.status, chat.sendMessage, chat.stop, chat.regenerate],
+    [chat.messages, chat.status, chat.sendMessage, chat.stop, chat.regenerate]
   );
 
   const runtime = useExternalStoreRuntime(adapter);
+
+  const resetHandoffState = useCallback(() => {
+    setHandoffPrompt("");
+    setHandoffFeedback("");
+    setHandoffMessages(null);
+    setHandoffPreviewMessage(null);
+    setHandoffIndex(null);
+    setHandoffError(null);
+    setHandoffLoading(false);
+    setHandoffAccepting(false);
+  }, []);
+
+  const requestHandoffPreview = useCallback(
+    async (messages: UIMessage[], index: number) => {
+      const res = await fetch(`/chats/${chatId}/handoff/preview`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ index, messages }),
+      });
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      const data = (await res.json()) as { message: UIMessage };
+      return data.message;
+    },
+    [chatId]
+  );
 
   const handleFork = useCallback(
     async (messageIndex: number) => {
@@ -343,8 +460,127 @@ function ChatBody({
         console.error("Failed to fork chat", err);
       }
     },
-    [chatId, router],
+    [chatId, router]
   );
+
+  const handleHandoffStart = useCallback((messageIndex: number) => {
+    setHandoffIndex(messageIndex);
+    setHandoffPrompt("");
+    setHandoffFeedback("");
+    setHandoffMessages(null);
+    setHandoffPreviewMessage(null);
+    setHandoffError(null);
+    setHandoffAccepting(false);
+    setHandoffPromptOpen(true);
+  }, []);
+
+  const handleHandoffSubmit = useCallback(async () => {
+    const trimmed = handoffPrompt.trim();
+    if (!trimmed || handoffIndex === null) return;
+
+    setHandoffLoading(true);
+    setHandoffError(null);
+
+    try {
+      const history = chat.messages.slice(0, handoffIndex + 1);
+      const syntheticMessage: UIMessage = {
+        id: generateClientId(),
+        role: "user",
+        parts: [{ type: "text", text: buildHandoffPrompt(trimmed) }],
+      };
+      const requestMessages = [...history, syntheticMessage];
+      const assistantMessage = await requestHandoffPreview(
+        requestMessages,
+        handoffIndex
+      );
+      const nextMessages = [...requestMessages, assistantMessage];
+
+      setHandoffMessages(nextMessages);
+      setHandoffPreviewMessage(assistantMessage);
+      setHandoffPromptOpen(false);
+      setHandoffPreviewOpen(true);
+    } catch (err) {
+      setHandoffError(
+        err instanceof Error
+          ? err.message
+          : "Failed to generate handoff summary"
+      );
+    } finally {
+      setHandoffLoading(false);
+    }
+  }, [chat.messages, handoffIndex, handoffPrompt, requestHandoffPreview]);
+
+  const handleHandoffRevision = useCallback(async () => {
+    const trimmed = handoffFeedback.trim();
+    if (!trimmed || !handoffMessages || handoffIndex === null) return;
+
+    setHandoffLoading(true);
+    setHandoffError(null);
+
+    try {
+      const feedbackMessage: UIMessage = {
+        id: generateClientId(),
+        role: "user",
+        parts: [{ type: "text", text: trimmed }],
+      };
+      const requestMessages = [...handoffMessages, feedbackMessage];
+      const assistantMessage = await requestHandoffPreview(
+        requestMessages,
+        handoffIndex
+      );
+      const nextMessages = [...requestMessages, assistantMessage];
+
+      setHandoffMessages(nextMessages);
+      setHandoffPreviewMessage(assistantMessage);
+      setHandoffFeedback("");
+    } catch (err) {
+      setHandoffError(
+        err instanceof Error ? err.message : "Failed to revise handoff summary"
+      );
+    } finally {
+      setHandoffLoading(false);
+    }
+  }, [handoffFeedback, handoffIndex, handoffMessages, requestHandoffPreview]);
+
+  const handleHandoffAccept = useCallback(async () => {
+    if (!handoffPreviewMessage || handoffIndex === null) return;
+    const previewText = extractTextFromParts(handoffPreviewMessage.parts);
+    if (!previewText.trim()) {
+      setHandoffError("Summary is empty.");
+      return;
+    }
+
+    setHandoffAccepting(true);
+    setHandoffError(null);
+
+    try {
+      const res = await fetch(`/chats/${chatId}/handoff`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ index: handoffIndex, text: previewText }),
+      });
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      const data = (await res.json()) as { chatId: string };
+      setHandoffPreviewOpen(false);
+      resetHandoffState();
+      router.push(`/chats/${data.chatId}`);
+      router.refresh();
+    } catch (err) {
+      setHandoffError(
+        err instanceof Error ? err.message : "Failed to create handoff chat"
+      );
+    } finally {
+      setHandoffAccepting(false);
+    }
+  }, [chatId, handoffIndex, handoffPreviewMessage, resetHandoffState, router]);
+
+  const previewText = handoffPreviewMessage
+    ? extractTextFromParts(handoffPreviewMessage.parts)
+    : "";
+  const canSubmitHandoff = handoffPrompt.trim() !== "";
+  const canReviseHandoff = handoffFeedback.trim() !== "";
 
   // Auto-trigger for new chats: if all messages are user-only, send to get assistant response
   useEffect(() => {
@@ -361,14 +597,159 @@ function ChatBody({
     <div className="min-h-0 flex-1">
       {mounted ? (
         <AssistantRuntimeProvider runtime={runtime}>
-          <Thread onFork={(idx) => void handleFork(idx)} />
+          <Thread
+            onFork={(idx) => void handleFork(idx)}
+            onHandoff={(idx) => handleHandoffStart(idx)}
+          />
         </AssistantRuntimeProvider>
       ) : null}
       {chat.error ? (
-        <div className="px-4 pb-4 text-sm text-destructive">
+        <div className="text-destructive px-4 pb-4 text-sm">
           Error: {chat.error.message}
         </div>
       ) : null}
+      <Dialog
+        open={handoffPromptOpen}
+        onOpenChange={(open) => {
+          if (!open && handoffLoading) {
+            return;
+          }
+          if (!open) {
+            resetHandoffState();
+          }
+          setHandoffPromptOpen(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Start a handoff</DialogTitle>
+            <DialogDescription>{HANDOFF_PROMPT_QUESTION}</DialogDescription>
+          </DialogHeader>
+          <textarea
+            className="border-input bg-background placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 w-full resize-none overflow-y-auto rounded-lg border px-4 py-3 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
+            rows={1}
+            style={{ fieldSizing: "content", maxHeight: "160px" }}
+            placeholder="Share the new direction..."
+            value={handoffPrompt}
+            onChange={(e) => setHandoffPrompt(e.target.value)}
+          />
+          {handoffError ? (
+            <p className="text-destructive text-sm">{handoffError}</p>
+          ) : null}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                if (handoffLoading) return;
+                setHandoffPromptOpen(false);
+                resetHandoffState();
+              }}
+              disabled={handoffLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleHandoffSubmit()}
+              disabled={!canSubmitHandoff || handoffLoading}
+            >
+              {handoffLoading ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                "Generate summary"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={handoffPreviewOpen}
+        onOpenChange={(open) => {
+          if (!open && (handoffLoading || handoffAccepting)) {
+            return;
+          }
+          if (!open) {
+            resetHandoffState();
+          }
+          setHandoffPreviewOpen(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Review handoff summary</DialogTitle>
+            <DialogDescription>
+              Accept the summary to start a new chat, or leave feedback to
+              revise it.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="bg-muted/30 rounded-lg border p-4 text-sm">
+            {previewText ? (
+              <MarkdownPreview content={previewText} />
+            ) : (
+              <p className="text-muted-foreground">No summary generated yet.</p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium" htmlFor="handoff-feedback">
+              Revise summary
+            </label>
+            <textarea
+              id="handoff-feedback"
+              className="border-input bg-background placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 w-full resize-none overflow-y-auto rounded-lg border px-4 py-3 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
+              rows={1}
+              style={{ fieldSizing: "content", maxHeight: "160px" }}
+              placeholder="Add feedback or request changes..."
+              value={handoffFeedback}
+              onChange={(e) => setHandoffFeedback(e.target.value)}
+              disabled={handoffLoading || handoffAccepting}
+            />
+          </div>
+          {handoffError ? (
+            <p className="text-destructive text-sm">{handoffError}</p>
+          ) : null}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                if (handoffLoading || handoffAccepting) return;
+                setHandoffPreviewOpen(false);
+                resetHandoffState();
+              }}
+              disabled={handoffLoading || handoffAccepting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void handleHandoffRevision()}
+              disabled={!canReviseHandoff || handoffLoading || handoffAccepting}
+            >
+              {handoffLoading ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                "Revise"
+              )}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleHandoffAccept()}
+              disabled={
+                handoffLoading || handoffAccepting || !previewText.trim()
+              }
+            >
+              {handoffAccepting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                "Accept"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
