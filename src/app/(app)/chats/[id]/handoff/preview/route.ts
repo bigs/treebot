@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { getApiKeyByUserAndPlatform, getChatById } from "@/db/queries";
 import { decrypt } from "@/lib/crypto";
 import { buildProviderOptions, createModel, getSystemPrompt } from "@/lib/ai";
+import { inlineAttachmentMessages } from "@/lib/attachments/inline";
 import type { Platform } from "@/db/schema";
 import type { ModelParams } from "@/lib/models";
 
@@ -88,7 +89,18 @@ export async function POST(
     storedParams?.reasoning_effort
   );
 
-  const modelMessages = await convertToModelMessages(messages);
+  let modelMessagesInput = messages;
+  try {
+    modelMessagesInput = await inlineAttachmentMessages(messages, {
+      userId: session.sub,
+      chatId,
+      baseUrl: request.url,
+    });
+  } catch {
+    return new Response("Failed to load attachments", { status: 400 });
+  }
+
+  const modelMessages = await convertToModelMessages(modelMessagesInput);
 
   const result = await generateText({
     model,

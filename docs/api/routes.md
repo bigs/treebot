@@ -31,6 +31,54 @@ Streams assistant responses for a chat.
 - `404 Not found` if the chat does not exist for the user.
 - `400 No API key configured for <platform>` if the user lacks a provider key.
 
+## POST /chats/[id]/attachments
+
+Uploads a file attachment for the current chat.
+
+**File:** `src/app/(app)/chats/[id]/attachments/route.ts`
+
+**Auth:** Required (session cookie)
+
+**Request body:** `multipart/form-data`
+
+- `file` is the uploaded attachment.
+
+**Response:**
+
+```json
+{
+  "filename": "stored-filename.ext",
+  "originalName": "original-filename.ext",
+  "mediaType": "image/png",
+  "size": 123456,
+  "url": "/chats/<id>/attachments/stored-filename.ext"
+}
+```
+
+**Error responses:**
+
+- `401 Unauthorized` if not logged in.
+- `404 Not found` if the chat does not exist for the user.
+- `400 Invalid file upload` if the payload is malformed.
+- `400 Unsupported file type` or `400 File is too large` if validation fails.
+
+## GET /chats/[id]/attachments/[filename]
+
+Serves an uploaded attachment for the authenticated chat owner.
+
+**File:** `src/app/(app)/chats/[id]/attachments/[filename]/route.ts`
+
+**Auth:** Required (session cookie)
+
+**Response:**
+
+- The raw file bytes with a best-effort `Content-Type`.
+
+**Error responses:**
+
+- `401 Unauthorized` if not logged in.
+- `404 Not found` if the chat or file does not exist for the user.
+
 ## POST /chats/[id]/fork
 
 Creates a forked chat from a specific message index.

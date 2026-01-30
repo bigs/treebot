@@ -29,6 +29,7 @@ export default async function ChatDetailPage({
   return (
     <ChatView
       chatId={chat.id}
+      platform={chat.provider}
       modelName={modelInfo?.name ?? chat.model}
       reasoningLevels={reasoningLevels}
       initialReasoningLevel={initialReasoningLevel}

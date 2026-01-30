@@ -20,4 +20,5 @@ Treebot is a chatbot interface that lets users fork or handoff from any point in
 - [Onboarding workflow](features/onboarding.md)
 - [Admin capabilities](features/admin.md)
 - [Handoffs](features/handoffs.md)
+- [Attachments](features/attachments.md)
 - [API routes](api/routes.md)

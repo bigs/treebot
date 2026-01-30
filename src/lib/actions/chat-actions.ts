@@ -5,7 +5,9 @@ import { getSession } from "@/lib/auth";
 import {
   createChat,
   deleteChatWithChildren,
+  getChatById,
   updateChatTitle,
+  updateChatMessages,
 } from "@/db/queries";
 import { generateChatTitle } from "@/lib/chat-title";
 import type { Platform } from "@/db/schema";
@@ -69,6 +71,120 @@ export async function createChatAction(input: {
   revalidatePath("/", "layout");
 
   return { chatId: chat.id };
+}
+
+export async function createDraftChatAction(input: {
+  provider: string;
+  model: string;
+  reasoningLevel?: string;
+}): Promise<{ chatId: string } | { error: string }> {
+  const session = await getSession();
+  if (!session) {
+    return { error: "Not authenticated." };
+  }
+
+  const provider = input.provider;
+  if (!VALID_PLATFORMS.includes(provider as Platform)) {
+    return { error: "Invalid provider." };
+  }
+
+  if (!input.model) {
+    return { error: "Model is required." };
+  }
+
+  const modelParams: ModelParams | undefined = input.reasoningLevel
+    ? { reasoning_effort: input.reasoningLevel }
+    : undefined;
+
+  const chat = createChat(
+    session.sub,
+    provider as Platform,
+    input.model,
+    [],
+    modelParams
+  );
+
+  revalidatePath("/", "layout");
+
+  return { chatId: chat.id };
+}
+
+export async function finalizeChatWithAttachmentsAction(input: {
+  chatId: string;
+  message: string;
+  attachments: Array<{
+    url: string;
+    mediaType: string;
+    filename?: string;
+  }>;
+}): Promise<{ success: true } | { error: string }> {
+  const session = await getSession();
+  if (!session) {
+    return { error: "Not authenticated." };
+  }
+
+  const chatId = input.chatId;
+  if (!chatId) {
+    return { error: "Chat ID is required." };
+  }
+
+  const chat = getChatById(chatId, session.sub);
+  if (!chat) {
+    return { error: "Chat not found." };
+  }
+
+  if (!Array.isArray(chat.messages) || chat.messages.length > 0) {
+    return { error: "Chat already initialized." };
+  }
+
+  const trimmed = input.message.trim();
+  if (!trimmed && input.attachments.length === 0) {
+    return { error: "Message cannot be empty." };
+  }
+
+  const safeAttachments = input.attachments.filter((attachment) =>
+    attachment.url.startsWith(`/chats/${chatId}/attachments/`)
+  );
+
+  if (safeAttachments.length !== input.attachments.length) {
+    return { error: "Invalid attachment reference." };
+  }
+
+  const parts = [
+    ...safeAttachments.map((attachment) => ({
+      type: "file" as const,
+      mediaType: attachment.mediaType,
+      filename: attachment.filename,
+      url: attachment.url,
+    })),
+    ...(trimmed ? [{ type: "text" as const, text: trimmed }] : []),
+  ];
+
+  const messages = [
+    {
+      id: crypto.randomUUID(),
+      role: "user" as const,
+      parts,
+    },
+  ];
+
+  updateChatMessages(chatId, session.sub, messages);
+
+  if (trimmed) {
+    generateChatTitle({
+      chatId,
+      userId: session.sub,
+      platform: chat.provider as Platform,
+      modelId: chat.model,
+      prompt: trimmed,
+    }).catch(() => {
+      /* title generation is best-effort */
+    });
+  }
+
+  revalidatePath("/", "layout");
+
+  return { success: true };
 }
 
 export async function deleteChatAction(

@@ -131,6 +131,7 @@ const AttachmentUI: FC = () => {
   const isComposer = aui.attachment.source === "composer";
 
   const isImage = useAuiState(({ attachment }) => attachment.type === "image");
+  const showName = !isImage && !isComposer;
   const typeLabel = useAuiState(({ attachment }) => {
     const type = attachment.type;
     switch (type) {
@@ -154,7 +155,8 @@ const AttachmentUI: FC = () => {
         className={cn(
           "aui-attachment-root relative",
           isImage &&
-            "aui-attachment-root-composer only:[&>#attachment-tile]:size-24"
+            "aui-attachment-root-composer only:[&>#attachment-tile]:size-24",
+          showName && "flex flex-col items-center gap-1"
         )}
       >
         <AttachmentPreviewDialog>
@@ -173,6 +175,11 @@ const AttachmentUI: FC = () => {
             </div>
           </TooltipTrigger>
         </AttachmentPreviewDialog>
+        {showName && (
+          <span className="aui-attachment-name text-muted-foreground max-w-28 truncate text-[10px]">
+            <AttachmentPrimitive.Name />
+          </span>
+        )}
         {isComposer && <AttachmentRemove />}
       </AttachmentPrimitive.Root>
       <TooltipContent side="top">

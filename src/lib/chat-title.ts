@@ -67,17 +67,19 @@ export async function generateChatTitle({
   const keyRow = getApiKeyByUserAndPlatform(userId, platform);
   if (!keyRow) return;
   const apiKey = decrypt(keyRow.encryptedKey);
-  const tools = buildTools(platform, apiKey);
 
   let titleModel;
   let titleProviderOptions;
+  let tools: Record<string, unknown>;
 
   if (platform === "google") {
     titleModel = createModel("google", apiKey, "gemini-3-flash-preview");
     titleProviderOptions = buildProviderOptions("google", "minimal");
+    tools = buildTools("google", apiKey, "gemini-3-flash-preview", "minimal");
   } else {
     titleModel = createModel(platform, apiKey, modelId);
     titleProviderOptions = buildProviderOptions(platform, "none");
+    tools = buildTools(platform, apiKey, modelId, "none");
   }
 
   const conversationSummary = messages

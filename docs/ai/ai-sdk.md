@@ -19,6 +19,8 @@ The main chat streaming route is `POST /chats/[id]/stream` in `src/app/(app)/cha
 
 - Uses `streamText` from `ai`.
 - Converts UI messages into model messages via `convertToModelMessages`.
+- Inlines local attachments into `data:` URLs before calling the model so
+  private uploads never need to be fetched publicly.
 - Supplies `system`, `providerOptions`, and `tools` from `src/lib/ai.ts`.
 - Streams results back to the client using `toUIMessageStreamResponse`.
 - On completion, writes the normalized message list to the DB.

@@ -25,7 +25,9 @@ export function createModel(
 
 export function buildTools(
   platform: Platform,
-  apiKey: string
+  apiKey: string,
+  modelId?: string,
+  reasoningEffort?: string
 ): Record<string, unknown> {
   if (platform === "google") {
     const provider = createGoogleGenerativeAI({ apiKey });
@@ -34,6 +36,9 @@ export function buildTools(
     };
   }
   const provider = createOpenAI({ apiKey });
+  if (modelId === "gpt-5.2" && reasoningEffort === "minimal") {
+    return {};
+  }
   return {
     web_search: provider.tools.webSearch({}),
   };

@@ -33,3 +33,14 @@ The assistant-ui wrapper components live in `src/components/assistant-ui/`:
 - `attachment.tsx` and `tooltip-icon-button.tsx` support rich composer and message actions.
 
 This layer gives assistant-ui a consistent visual style while keeping the data source (AI SDK) isolated in the adapter.
+
+## Attachments
+
+Attachments are wired through the external store runtime:
+
+- `src/app/(app)/chats/[id]/chat-view.tsx` supplies an `attachments` adapter so
+  assistant-ui can accept files in the composer.
+- Uploaded files are stored via `POST /chats/[id]/attachments` and referenced
+  in AI SDK messages as `file` parts with a local URL.
+- `toThreadMessageLike()` maps AI SDK file parts to assistant-ui attachments so
+  user messages render previews (thumbnails for images, icons for other files).

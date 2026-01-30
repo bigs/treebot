@@ -37,9 +37,5 @@ export default async function NewChatPage() {
     );
   }
 
-  return (
-    <div className="flex h-screen items-center justify-center p-4">
-      <NewChatForm models={availableModels} />
-    </div>
-  );
+  return <NewChatForm models={availableModels} />;
 }
