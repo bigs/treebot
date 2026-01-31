@@ -57,6 +57,7 @@ export const attachmentToFilePart = (
 ): FilePart | null => {
   const mediaType = attachment.contentType || "application/octet-stream";
   const name = attachment.name;
+  if (attachment.content.length === 0) return null;
   const content = attachment.content[0];
   if (content.type === "image") {
     return {

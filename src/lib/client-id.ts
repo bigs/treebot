@@ -1,4 +1,4 @@
-export function generateClientId() {
+export function generateClientId(): string {
   if (typeof crypto !== "undefined") {
     if (typeof crypto.randomUUID === "function") {
       return crypto.randomUUID();

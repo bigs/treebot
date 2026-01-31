@@ -6,7 +6,6 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import {
   AssistantRuntimeProvider,
-  type CompleteAttachment,
   type PendingAttachment,
   type ExternalStoreAdapter,
   useExternalStoreRuntime,
@@ -31,19 +30,18 @@ import {
 } from "@/components/ui/select";
 import type { ReasoningOption } from "@/lib/models";
 import type { Platform } from "@/db/schema";
-import {
-  getAttachmentPolicy,
-  getUiAttachmentType,
-  validateAttachment,
-} from "@/lib/attachments/policy";
+import { getAttachmentPolicy } from "@/lib/attachments/policy";
 import {
   attachmentToFilePart,
-  buildAttachmentContent,
   toThreadMessageLike,
   type FilePart,
 } from "@/lib/assistant-ui/conversion";
-import { generateClientId } from "@/lib/client-id";
+import {
+  buildCompleteAttachment,
+  createPendingAttachment,
+} from "@/lib/attachments/adapter";
 import type { UploadResponse } from "@/lib/attachments/types";
+import { generateClientId } from "@/lib/client-id";
 import { Loader2 } from "lucide-react";
 
 interface ChatViewProps {
@@ -296,20 +294,13 @@ function ChatBody({
     return {
       accept: policy.accept,
       add: ({ file }: { file: File }) => {
-        const validation = validateAttachment(platform, file.type, file.size);
-        if (!validation.ok) {
-          return Promise.reject(new Error(validation.reason));
+        try {
+          return Promise.resolve(createPendingAttachment(platform, file));
+        } catch (err) {
+          return Promise.reject(
+            err instanceof Error ? err : new Error("Unsupported file")
+          );
         }
-        const mediaType = file.type || "application/octet-stream";
-        const pending: PendingAttachment = {
-          id: generateClientId(),
-          type: getUiAttachmentType(mediaType),
-          name: file.name,
-          contentType: mediaType,
-          file,
-          status: { type: "requires-action", reason: "composer-send" },
-        };
-        return Promise.resolve(pending);
       },
       send: async (attachment: PendingAttachment) => {
         const formData = new FormData();
@@ -322,16 +313,7 @@ function ChatBody({
           throw new Error(await res.text());
         }
         const data = (await res.json()) as UploadResponse;
-        const name = data.originalName || attachment.name;
-        const mediaType = data.mediaType || attachment.contentType;
-        const complete: CompleteAttachment = {
-          ...attachment,
-          name,
-          contentType: mediaType,
-          status: { type: "complete" },
-          content: buildAttachmentContent(data.url, mediaType, name),
-        };
-        return complete;
+        return buildCompleteAttachment(attachment, data);
       },
       remove: () => Promise.resolve(),
     };

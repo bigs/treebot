@@ -6,7 +6,6 @@ import type { UIMessage } from "ai";
 import {
   AssistantRuntimeProvider,
   type AssistantRuntime,
-  type CompleteAttachment,
   type ExternalStoreAdapter,
   type PendingAttachment,
   type ThreadMessageLike,
@@ -29,19 +28,17 @@ import {
   deleteChatAction,
   finalizeChatWithAttachmentsAction,
 } from "@/lib/actions/chat-actions";
-import {
-  getAttachmentPolicy,
-  getUiAttachmentType,
-  validateAttachment,
-} from "@/lib/attachments/policy";
+import { getAttachmentPolicy } from "@/lib/attachments/policy";
 import type { UploadResponse } from "@/lib/attachments/types";
 import {
   attachmentToFilePart,
-  buildAttachmentContent,
   toThreadMessageLike,
   type FilePart,
 } from "@/lib/assistant-ui/conversion";
-import { generateClientId } from "@/lib/client-id";
+import {
+  buildCompleteAttachment,
+  createPendingAttachment,
+} from "@/lib/attachments/adapter";
 import type { ModelInfo } from "@/lib/models";
 
 const LS_MODEL_KEY = "treebot:last-model";
@@ -262,24 +259,15 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
     return {
       accept: policy.accept,
       add: ({ file }: { file: File }) => {
-        const validation = validateAttachment(
-          selectedModel.provider,
-          file.type,
-          file.size
-        );
-        if (!validation.ok) {
-          return Promise.reject(new Error(validation.reason));
+        try {
+          return Promise.resolve(
+            createPendingAttachment(selectedModel.provider, file)
+          );
+        } catch (err) {
+          return Promise.reject(
+            err instanceof Error ? err : new Error("Unsupported file")
+          );
         }
-        const mediaType = file.type || "application/octet-stream";
-        const pending: PendingAttachment = {
-          id: generateClientId(),
-          type: getUiAttachmentType(mediaType),
-          name: file.name,
-          contentType: mediaType,
-          file,
-          status: { type: "requires-action", reason: "composer-send" },
-        };
-        return Promise.resolve(pending);
       },
       send: async (attachment: PendingAttachment) => {
         const chatId = await ensureDraftChatId();
@@ -293,16 +281,7 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
           throw new Error(await res.text());
         }
         const data = (await res.json()) as UploadResponse;
-        const name = data.originalName || attachment.name;
-        const mediaType = data.mediaType || attachment.contentType;
-        const complete: CompleteAttachment = {
-          ...attachment,
-          name,
-          contentType: mediaType,
-          status: { type: "complete" },
-          content: buildAttachmentContent(data.url, mediaType, name),
-        };
-        return complete;
+        return buildCompleteAttachment(attachment, data);
       },
       remove: () => Promise.resolve(),
     };
