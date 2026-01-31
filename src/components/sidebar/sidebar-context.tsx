@@ -11,6 +11,10 @@ import {
 interface SidebarContextValue {
   collapsed: boolean;
   toggleSidebar: () => void;
+  mobileOpen: boolean;
+  openMobile: () => void;
+  closeMobile: () => void;
+  toggleMobile: () => void;
   expandedChats: Set<string>;
   toggleChat: (id: string) => void;
   expandChats: (ids: string[]) => void;
@@ -26,10 +30,23 @@ export function useSidebar() {
 
 export function SidebarProvider({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedChats, setExpandedChats] = useState<Set<string>>(new Set());
 
   const toggleSidebar = useCallback(() => {
     setCollapsed((prev) => !prev);
+  }, []);
+
+  const openMobile = useCallback(() => {
+    setMobileOpen(true);
+  }, []);
+
+  const closeMobile = useCallback(() => {
+    setMobileOpen(false);
+  }, []);
+
+  const toggleMobile = useCallback(() => {
+    setMobileOpen((prev) => !prev);
   }, []);
 
   const toggleChat = useCallback((id: string) => {
@@ -60,6 +77,10 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
       value={{
         collapsed,
         toggleSidebar,
+        mobileOpen,
+        openMobile,
+        closeMobile,
+        toggleMobile,
         expandedChats,
         toggleChat,
         expandChats,

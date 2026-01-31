@@ -28,6 +28,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { ReasoningOption } from "@/lib/models";
 import type { Platform } from "@/db/schema";
 import { getAttachmentPolicy } from "@/lib/attachments/policy";
@@ -42,7 +51,7 @@ import {
 } from "@/lib/attachments/adapter";
 import type { UploadResponse } from "@/lib/attachments/types";
 import { generateClientId } from "@/lib/client-id";
-import { Loader2 } from "lucide-react";
+import { Loader2, MoreHorizontal } from "lucide-react";
 
 interface ChatViewProps {
   chatId: string;
@@ -194,26 +203,95 @@ export function ChatView({
 
   useEffect(() => {
     const previousBodyOverflow = document.body.style.overflow;
+    const previousBodyPosition = document.body.style.position;
+    const previousBodyWidth = document.body.style.width;
+    const previousBodyTop = document.body.style.top;
+    const previousBodyLeft = document.body.style.left;
     const previousHtmlOverflow = document.documentElement.style.overflow;
     document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.width = "100%";
+    document.body.style.top = "0";
+    document.body.style.left = "0";
     document.documentElement.style.overflow = "hidden";
+
+    const layoutHeightRef = { current: window.innerHeight };
+    const updateLayoutHeight = () => {
+      const next = window.innerHeight;
+      if (next > layoutHeightRef.current) {
+        layoutHeightRef.current = next;
+      }
+    };
+    const setKeyboardOffset = () => {
+      const viewport = window.visualViewport;
+      if (!viewport) {
+        document.documentElement.style.setProperty("--keyboard-offset", "0px");
+        document.documentElement.style.setProperty(
+          "--chat-viewport-height",
+          `${layoutHeightRef.current}px`
+        );
+        return;
+      }
+      const offset = Math.max(
+        0,
+        layoutHeightRef.current - viewport.height - viewport.offsetTop
+      );
+      document.documentElement.style.setProperty(
+        "--keyboard-offset",
+        `${offset}px`
+      );
+      document.documentElement.style.setProperty(
+        "--chat-viewport-height",
+        `${layoutHeightRef.current - offset}px`
+      );
+    };
+    const handleResize = () => {
+      updateLayoutHeight();
+      setKeyboardOffset();
+    };
+
+    updateLayoutHeight();
+    setKeyboardOffset();
+    window.visualViewport?.addEventListener("resize", setKeyboardOffset);
+    window.visualViewport?.addEventListener("scroll", setKeyboardOffset);
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("orientationchange", handleResize);
+
     return () => {
+      window.visualViewport?.removeEventListener("resize", setKeyboardOffset);
+      window.visualViewport?.removeEventListener("scroll", setKeyboardOffset);
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("orientationchange", handleResize);
+      document.documentElement.style.removeProperty("--keyboard-offset");
+      document.documentElement.style.removeProperty("--chat-viewport-height");
       document.body.style.overflow = previousBodyOverflow;
+      document.body.style.position = previousBodyPosition;
+      document.body.style.width = previousBodyWidth;
+      document.body.style.top = previousBodyTop;
+      document.body.style.left = previousBodyLeft;
       document.documentElement.style.overflow = previousHtmlOverflow;
     };
   }, []);
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
-      <header className="border-b px-4 py-2">
-        <div className="flex items-center gap-3">
-          <h1 className="text-sm font-medium">{title ?? modelName}</h1>
-          <span className="bg-muted text-muted-foreground rounded-full border px-2 py-0.5 text-xs">
+    <div
+      className="flex h-screen h-[100dvh] flex-col overflow-hidden"
+      style={{ height: "var(--chat-viewport-height, 100dvh)" }}
+    >
+      <header className="border-b pb-2 pr-4 pl-[calc(env(safe-area-inset-left)+3rem)] pt-[calc(env(safe-area-inset-top)+0.75rem)] md:py-2 md:px-4">
+        <div className="flex items-center gap-2">
+          <h1 className="min-w-0 flex-1 truncate text-sm font-medium md:flex-none md:max-w-[50%]">
+            {title ?? modelName}
+          </h1>
+          <span className="bg-muted text-muted-foreground hidden shrink-0 rounded-full border px-2 py-0.5 text-xs md:inline-flex">
             {modelName}
           </span>
           {mounted && reasoningLevels.length > 0 && (
-            <Select value={reasoningLevel} onValueChange={setReasoningLevel}>
-              <SelectTrigger className="w-[160px]" size="sm">
+            <Select
+              value={reasoningLevel}
+              onValueChange={setReasoningLevel}
+            >
+              <SelectTrigger className="hidden w-[160px] md:inline-flex" size="sm">
                 <SelectValue placeholder="Reasoning" />
               </SelectTrigger>
               <SelectContent>
@@ -225,6 +303,42 @@ export function ChatView({
               </SelectContent>
             </Select>
           )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="hover:bg-muted text-foreground inline-flex size-8 items-center justify-center rounded-md md:hidden"
+                aria-label="Chat options"
+              >
+                <MoreHorizontal className="size-5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Model</DropdownMenuLabel>
+              <div className="text-muted-foreground px-2 pb-2 text-sm">
+                {modelName}
+              </div>
+              {mounted && reasoningLevels.length > 0 ? (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Reasoning</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup
+                    value={reasoningLevel}
+                    onValueChange={setReasoningLevel}
+                  >
+                    {reasoningLevels.map((level) => (
+                      <DropdownMenuRadioItem
+                        key={level.value}
+                        value={level.value}
+                      >
+                        {level.label} reasoning
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
@@ -548,6 +662,7 @@ function ChatBody({
           <Thread
             onFork={(idx) => void handleFork(idx)}
             onHandoff={(idx) => handleHandoffStart(idx)}
+            compactMobileComposer
           />
         </AssistantRuntimeProvider>
       ) : null}

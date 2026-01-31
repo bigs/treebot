@@ -32,7 +32,7 @@ import { Input } from "@/components/ui/input";
 import type { ChatNode } from "@/lib/chat-tree";
 
 function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
-  const { expandedChats, toggleChat } = useSidebar();
+  const { expandedChats, toggleChat, closeMobile } = useSidebar();
   const pathname = usePathname();
   const router = useRouter();
   const hasChildren = node.children.length > 0;
@@ -107,6 +107,7 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
           <Link
             href={`/chats/${node.id}`}
             className="flex min-w-0 flex-1 items-center gap-2"
+            onClick={closeMobile}
           >
             {!hasChildren ? (
               <MessageSquare className="size-4 shrink-0" />

@@ -56,9 +56,14 @@ const HandoffContext = createContext<((messageIndex: number) => void) | null>(
 export interface ThreadProps {
   onFork?: (messageIndex: number) => void;
   onHandoff?: (messageIndex: number) => void;
+  compactMobileComposer?: boolean;
 }
 
-export const Thread: FC<ThreadProps> = ({ onFork, onHandoff }) => {
+export const Thread: FC<ThreadProps> = ({
+  onFork,
+  onHandoff,
+  compactMobileComposer = false,
+}) => {
   const viewportRef = useRef<HTMLDivElement>(null);
   const isRunning = useAuiState(({ thread }) => thread.isRunning);
 
@@ -137,12 +142,12 @@ export const Thread: FC<ThreadProps> = ({ onFork, onHandoff }) => {
           <ThreadPrimitive.Viewport
             turnAnchor="top"
             autoScroll={false}
-            scrollToBottomOnRunStart={false}
-            scrollToBottomOnInitialize={false}
-            scrollToBottomOnThreadSwitch={false}
-            ref={viewportRef}
-            className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll px-4 pt-4 [overflow-anchor:none]"
-          >
+          scrollToBottomOnRunStart={false}
+          scrollToBottomOnInitialize={false}
+          scrollToBottomOnThreadSwitch={false}
+          ref={viewportRef}
+          className="aui-thread-viewport relative flex flex-1 flex-col overscroll-contain overflow-x-auto overflow-y-scroll px-4 pt-4 [overflow-anchor:none]"
+        >
             <AuiIf condition={({ thread }) => thread.isEmpty}>
               <ThreadWelcome />
             </AuiIf>
@@ -163,9 +168,9 @@ export const Thread: FC<ThreadProps> = ({ onFork, onHandoff }) => {
               <div className="h-[80vh] shrink-0" />
             </AuiIf>
 
-            <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer bg-background sticky bottom-0 mx-auto mt-auto flex w-full max-w-(--thread-max-width) flex-col gap-4 overflow-visible pb-4 md:pb-6">
+            <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer bg-background sticky bottom-[calc(env(safe-area-inset-bottom)+var(--keyboard-offset,0px))] md:bottom-0 mx-auto mt-auto flex w-full max-w-(--thread-max-width) flex-col gap-4 overflow-visible pb-4 md:pb-6">
               <ThreadScrollToBottom />
-              <Composer />
+              <Composer compactMobile={compactMobileComposer} />
             </ThreadPrimitive.ViewportFooter>
           </ThreadPrimitive.Viewport>
         </ThreadPrimitive.Root>
@@ -238,27 +243,93 @@ const ThreadSuggestionItem: FC = () => {
   );
 };
 
-export const Composer: FC = () => {
+export const Composer: FC<{ compactMobile?: boolean }> = ({
+  compactMobile = false,
+}) => {
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!compactMobile) return;
+    if (typeof window === "undefined") return;
+    if (window.matchMedia("(min-width: 768px)").matches) {
+      inputRef.current?.focus();
+    }
+  }, [compactMobile]);
+
   return (
     <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
-      <ComposerPrimitive.AttachmentDropzone className="aui-composer-attachment-dropzone border-input bg-background has-[textarea:focus-visible]:border-ring has-[textarea:focus-visible]:ring-ring/20 data-[dragging=true]:border-ring data-[dragging=true]:bg-accent/50 flex w-full flex-col rounded-2xl border px-1 pt-2 transition-shadow outline-none has-[textarea:focus-visible]:ring-2 data-[dragging=true]:border-dashed">
+      <ComposerPrimitive.AttachmentDropzone
+        className={cn(
+          "aui-composer-attachment-dropzone border-input bg-background has-[textarea:focus-visible]:border-ring has-[textarea:focus-visible]:ring-ring/20 data-[dragging=true]:border-ring data-[dragging=true]:bg-accent/50 flex w-full flex-col rounded-2xl border px-1 pt-2 transition-shadow outline-none has-[textarea:focus-visible]:ring-2 data-[dragging=true]:border-dashed",
+          compactMobile && "group/compose"
+        )}
+      >
         <ComposerAttachments />
-        <ComposerPrimitive.Input
-          placeholder="Send a message..."
-          className="aui-composer-input placeholder:text-muted-foreground mb-1 max-h-32 min-h-14 w-full resize-none bg-transparent px-4 pt-2 pb-3 text-sm outline-none focus-visible:ring-0"
-          rows={1}
-          autoFocus
-          aria-label="Message input"
-        />
-        <ComposerAction />
+        <div className="relative">
+          <ComposerPrimitive.Input
+            placeholder="Send a message..."
+            className={cn(
+              "aui-composer-input placeholder:text-muted-foreground mb-1 max-h-32 min-h-10 w-full resize-none overflow-y-auto bg-transparent px-4 py-2 text-base outline-none focus-visible:ring-0 md:min-h-14 md:pt-2 md:pb-3 md:text-sm",
+              compactMobile && "pr-12 md:pr-4"
+            )}
+            rows={1}
+            autoFocus={!compactMobile}
+            aria-label="Message input"
+            ref={inputRef}
+          />
+          {compactMobile ? <ComposerCompactAction /> : null}
+        </div>
+        <ComposerAction compactMobile={compactMobile} />
       </ComposerPrimitive.AttachmentDropzone>
     </ComposerPrimitive.Root>
   );
 };
 
-const ComposerAction: FC = () => {
+const ComposerCompactAction: FC = () => {
   return (
-    <div className="aui-composer-action-wrapper relative mx-2 mb-2 flex items-center justify-between">
+    <div className="absolute right-2 top-1/2 -translate-y-1/2 md:hidden group-focus-within/compose:hidden">
+      <AuiIf condition={({ thread }) => !thread.isRunning}>
+        <ComposerPrimitive.Send asChild>
+          <TooltipIconButton
+            tooltip="Send message"
+            side="bottom"
+            type="submit"
+            variant="default"
+            size="icon"
+            className="aui-composer-send size-8 rounded-full"
+            aria-label="Send message"
+          >
+            <ArrowUpIcon className="aui-composer-send-icon size-4" />
+          </TooltipIconButton>
+        </ComposerPrimitive.Send>
+      </AuiIf>
+      <AuiIf condition={({ thread }) => thread.isRunning}>
+        <ComposerPrimitive.Cancel asChild>
+          <Button
+            type="button"
+            variant="default"
+            size="icon"
+            className="aui-composer-cancel size-8 rounded-full"
+            aria-label="Stop generating"
+          >
+            <SquareIcon className="aui-composer-cancel-icon size-3 fill-current" />
+          </Button>
+        </ComposerPrimitive.Cancel>
+      </AuiIf>
+    </div>
+  );
+};
+
+const ComposerAction: FC<{ compactMobile?: boolean }> = ({
+  compactMobile = false,
+}) => {
+  return (
+    <div
+      className={cn(
+        "aui-composer-action-wrapper relative mx-2 mb-2 flex items-center justify-between",
+        compactMobile && "hidden md:flex group-focus-within/compose:flex"
+      )}
+    >
       <ComposerAddAttachment />
       <AuiIf condition={({ thread }) => !thread.isRunning}>
         <ComposerPrimitive.Send asChild>
