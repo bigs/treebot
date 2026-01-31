@@ -6,7 +6,6 @@ export type AttachmentPolicy = {
   accept: string;
   allowedMimeTypes: Set<string>;
   maxBytesByCategory: Partial<Record<AttachmentCategory, number>>;
-  maxTotalBytes?: number;
 };
 
 export type AttachmentValidationResult =
@@ -64,7 +63,6 @@ const OPENAI_POLICY: AttachmentPolicy = {
   maxBytesByCategory: {
     image: 50 * MB,
   },
-  maxTotalBytes: 50 * MB,
 };
 
 const GEMINI_POLICY: AttachmentPolicy = {
