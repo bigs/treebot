@@ -10,6 +10,7 @@ import {
   updateChatMessages,
 } from "@/db/queries";
 import { generateChatTitle } from "@/lib/chat-title";
+import { deleteAttachmentDir } from "@/lib/attachments/storage";
 import type { Platform } from "@/db/schema";
 import type { ModelParams } from "@/lib/models";
 
@@ -199,7 +200,12 @@ export async function deleteChatAction(
     return { error: "Chat ID is required." };
   }
 
-  deleteChatWithChildren(chatId, session.sub);
+  const deletedChatIds = deleteChatWithChildren(chatId, session.sub);
+  await Promise.all(
+    deletedChatIds.map((id) =>
+      deleteAttachmentDir({ userId: session.sub, chatId: id })
+    )
+  );
   revalidatePath("/", "layout");
 
   return { success: true };

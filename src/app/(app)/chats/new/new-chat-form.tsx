@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import type { UIMessage } from "ai";
 import {
   AssistantRuntimeProvider,
+  type AssistantRuntime,
+  type CompleteAttachment,
   type ExternalStoreAdapter,
   type PendingAttachment,
   type ThreadMessageLike,
@@ -24,6 +26,7 @@ import {
 import {
   createChatAction,
   createDraftChatAction,
+  deleteChatAction,
   finalizeChatWithAttachmentsAction,
 } from "@/lib/actions/chat-actions";
 import {
@@ -31,26 +34,20 @@ import {
   getUiAttachmentType,
   validateAttachment,
 } from "@/lib/attachments/policy";
+import type { UploadResponse } from "@/lib/attachments/types";
 import {
   attachmentToFilePart,
   buildAttachmentContent,
   toThreadMessageLike,
   type FilePart,
 } from "@/lib/assistant-ui/conversion";
+import { generateClientId } from "@/lib/client-id";
 import type { ModelInfo } from "@/lib/models";
 
 const LS_MODEL_KEY = "treebot:last-model";
 const LS_REASONING_KEY = "treebot:last-reasoning";
 const DEFAULT_MODEL_ID = "gemini-3-pro-preview";
 const DEFAULT_REASONING = "high";
-
-type UploadResponse = {
-  filename: string;
-  originalName: string;
-  mediaType: string;
-  size: number;
-  url: string;
-};
 
 function validReasoningForModel(
   model: ModelInfo | undefined,
@@ -59,30 +56,6 @@ function validReasoningForModel(
   if (!model || model.reasoningLevels.length === 0) return "";
   if (model.reasoningLevels.some((l) => l.value === current)) return current;
   return model.defaultReasoningLevel;
-}
-
-function generateClientId() {
-  if (typeof crypto !== "undefined") {
-    if (typeof crypto.randomUUID === "function") {
-      return crypto.randomUUID();
-    }
-    if (typeof crypto.getRandomValues === "function") {
-      const bytes = new Uint8Array(16);
-      crypto.getRandomValues(bytes);
-      // UUID v4 format.
-      bytes[6] = (bytes[6] & 0x0f) | 0x40;
-      bytes[8] = (bytes[8] & 0x3f) | 0x80;
-      const hex = Array.from(bytes, (byte) =>
-        byte.toString(16).padStart(2, "0")
-      );
-      return `${hex.slice(0, 4).join("")}-${hex
-        .slice(4, 6)
-        .join("")}-${hex.slice(6, 8).join("")}-${hex
-        .slice(8, 10)
-        .join("")}-${hex.slice(10, 16).join("")}`;
-    }
-  }
-  return `id-${String(Date.now())}-${Math.random().toString(16).slice(2)}`;
 }
 
 export function NewChatForm({ models }: { models: ModelInfo[] }) {
@@ -95,6 +68,10 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
   const cancelControllerRef = useRef<AbortController | null>(null);
   const draftChatIdRef = useRef<string | null>(null);
   const draftPromiseRef = useRef<Promise<string> | null>(null);
+  const draftConfigRef = useRef<{ modelId: string; reasoning?: string } | null>(
+    null
+  );
+  const runtimeRef = useRef<AssistantRuntime | null>(null);
 
   // We use a single state for the selected model and reasoning to keep them in sync
   const [selection, setSelection] = useState<{
@@ -163,6 +140,32 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
     }
   }, [showReasoning, selection.reasoningLevel, selectedModel]);
 
+  const cleanupDraft = useCallback(async () => {
+    const existingChatId = draftChatIdRef.current;
+    const pendingDraft = draftPromiseRef.current;
+    draftChatIdRef.current = null;
+    draftPromiseRef.current = null;
+    draftConfigRef.current = null;
+
+    if (existingChatId) {
+      await deleteChatAction(existingChatId);
+      return;
+    }
+
+    if (pendingDraft) {
+      try {
+        const resolvedId = await pendingDraft;
+        await deleteChatAction(resolvedId);
+      } catch {
+        // ignore cleanup failures
+      }
+    }
+  }, []);
+
+  const clearComposerAttachments = useCallback(() => {
+    void runtimeRef.current?.thread.composer.clearAttachments();
+  }, []);
+
   const handleModelChange = useCallback(
     (modelId: string) => {
       const newModel = models.find((m) => m.id === modelId);
@@ -172,19 +175,28 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
         localStorage.getItem(LS_REASONING_KEY) ?? DEFAULT_REASONING;
       const nextReasoning = validReasoningForModel(newModel, storedPreference);
 
+      void cleanupDraft();
+      clearComposerAttachments();
+      setError("");
       setSelection({ modelId, reasoningLevel: nextReasoning });
       localStorage.setItem(LS_MODEL_KEY, modelId);
       if (nextReasoning) {
         localStorage.setItem(LS_REASONING_KEY, nextReasoning);
       }
     },
-    [models]
+    [cleanupDraft, clearComposerAttachments, models]
   );
 
-  const handleReasoningChange = useCallback((value: string) => {
-    setSelection((prev) => ({ ...prev, reasoningLevel: value }));
-    localStorage.setItem(LS_REASONING_KEY, value);
-  }, []);
+  const handleReasoningChange = useCallback(
+    (value: string) => {
+      void cleanupDraft();
+      clearComposerAttachments();
+      setError("");
+      setSelection((prev) => ({ ...prev, reasoningLevel: value }));
+      localStorage.setItem(LS_REASONING_KEY, value);
+    },
+    [cleanupDraft, clearComposerAttachments]
+  );
 
   const grouped = useMemo(() => {
     const byProvider = new Map<string, ModelInfo[]>();
@@ -203,16 +215,26 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
       throw new Error("Model is required.");
     }
 
+    const reasoning = showReasoning ? selection.reasoningLevel : undefined;
+    if (
+      draftConfigRef.current &&
+      (draftConfigRef.current.modelId !== selectedModel.id ||
+        draftConfigRef.current.reasoning !== reasoning)
+    ) {
+      await cleanupDraft();
+    }
+
     const promise = (async () => {
       const result = await createDraftChatAction({
         provider: selectedModel.provider,
         model: selectedModel.id,
-        reasoningLevel: showReasoning ? selection.reasoningLevel : undefined,
+        reasoningLevel: reasoning,
       });
       if ("error" in result) {
         throw new Error(result.error);
       }
       draftChatIdRef.current = result.chatId;
+      draftConfigRef.current = { modelId: selectedModel.id, reasoning };
       return result.chatId;
     })();
 
@@ -222,7 +244,7 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
     } finally {
       draftPromiseRef.current = null;
     }
-  }, [selectedModel, selection.reasoningLevel, showReasoning]);
+  }, [cleanupDraft, selectedModel, selection.reasoningLevel, showReasoning]);
 
   const attachmentAdapter = useMemo(() => {
     if (!selectedModel) {
@@ -246,10 +268,10 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
           file.size
         );
         if (!validation.ok) {
-          throw new Error(validation.reason);
+          return Promise.reject(new Error(validation.reason));
         }
         const mediaType = file.type || "application/octet-stream";
-        return {
+        const pending: PendingAttachment = {
           id: generateClientId(),
           type: getUiAttachmentType(mediaType),
           name: file.name,
@@ -257,6 +279,7 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
           file,
           status: { type: "requires-action", reason: "composer-send" },
         };
+        return Promise.resolve(pending);
       },
       send: async (attachment: PendingAttachment) => {
         const chatId = await ensureDraftChatId();
@@ -272,13 +295,14 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
         const data = (await res.json()) as UploadResponse;
         const name = data.originalName || attachment.name;
         const mediaType = data.mediaType || attachment.contentType;
-        return {
+        const complete: CompleteAttachment = {
           ...attachment,
           name,
           contentType: mediaType,
           status: { type: "complete" },
           content: buildAttachmentContent(data.url, mediaType, name),
         };
+        return complete;
       },
       remove: () => Promise.resolve(),
     };
@@ -331,6 +355,9 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
           if ("error" in result) {
             throw new Error(result.error);
           }
+          draftChatIdRef.current = null;
+          draftPromiseRef.current = null;
+          draftConfigRef.current = null;
           if (!controller.signal.aborted) {
             router.push(`/chats/${chatId}`);
           }
@@ -375,23 +402,42 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
       messages,
       isRunning: isSending,
       onNew: handleNew,
-      onCancel: () => {
+      onCancel: async () => {
         cancelControllerRef.current?.abort();
         sendingRef.current = false;
         setIsSending(false);
+        clearComposerAttachments();
+        await cleanupDraft();
       },
-      onReload: () => {
-        return;
-      },
+      onReload: async () => {},
       convertMessage: (message, idx) => toThreadMessageLike(message, idx),
       adapters: {
         attachments: attachmentAdapter,
       },
     }),
-    [attachmentAdapter, handleNew, isSending, messages]
+    [
+      attachmentAdapter,
+      clearComposerAttachments,
+      cleanupDraft,
+      handleNew,
+      isSending,
+      messages,
+    ]
   );
 
   const runtime = useExternalStoreRuntime(adapter);
+
+  useEffect(() => {
+    runtimeRef.current = runtime;
+  }, [runtime]);
+
+  useEffect(() => {
+    return () => {
+      if (draftChatIdRef.current || draftPromiseRef.current) {
+        void cleanupDraft();
+      }
+    };
+  }, [cleanupDraft]);
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">

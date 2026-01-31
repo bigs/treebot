@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "fs/promises";
+import { mkdir, rm, writeFile } from "fs/promises";
 import path from "path";
 import { getAttachmentCategory, validateAttachment } from "./policy";
 import type { Platform } from "@/db/schema";
@@ -73,4 +73,19 @@ export function getAttachmentPath(params: {
   const safeFilename = sanitizeFilename(params.filename);
   const relativePath = path.join(safeUserId, safeChatId, safeFilename);
   return path.join(UPLOADS_ROOT, relativePath);
+}
+
+export function getAttachmentDir(params: { userId: number; chatId: string }) {
+  const safeUserId = sanitizeSegment(String(params.userId));
+  const safeChatId = sanitizeSegment(params.chatId);
+  const relativePath = path.join(safeUserId, safeChatId);
+  return path.join(UPLOADS_ROOT, relativePath);
+}
+
+export async function deleteAttachmentDir(params: {
+  userId: number;
+  chatId: string;
+}) {
+  const dirPath = getAttachmentDir(params);
+  await rm(dirPath, { recursive: true, force: true });
 }

@@ -62,8 +62,9 @@ export async function GET(
 
   const ext = path.extname(filename).toLowerCase();
   const contentType = MIME_BY_EXTENSION[ext] ?? "application/octet-stream";
+  const body = new Blob([Buffer.from(data)]);
 
-  return new Response(data, {
+  return new Response(body, {
     headers: {
       "Content-Type": contentType,
       "Content-Disposition": `inline; filename=\"${filename}\"`,

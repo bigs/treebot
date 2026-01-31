@@ -6,6 +6,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import {
   AssistantRuntimeProvider,
+  type CompleteAttachment,
   type PendingAttachment,
   type ExternalStoreAdapter,
   useExternalStoreRuntime,
@@ -41,6 +42,8 @@ import {
   toThreadMessageLike,
   type FilePart,
 } from "@/lib/assistant-ui/conversion";
+import { generateClientId } from "@/lib/client-id";
+import type { UploadResponse } from "@/lib/attachments/types";
 import { Loader2 } from "lucide-react";
 
 interface ChatViewProps {
@@ -86,38 +89,6 @@ Output format requirements:
 The user's prompt for the handoff (include it verbatim at the end of your response) is:
 ${trimmed}`;
 }
-
-function generateClientId() {
-  if (typeof crypto !== "undefined") {
-    if (typeof crypto.randomUUID === "function") {
-      return crypto.randomUUID();
-    }
-    if (typeof crypto.getRandomValues === "function") {
-      const bytes = new Uint8Array(16);
-      crypto.getRandomValues(bytes);
-      // UUID v4 format.
-      bytes[6] = (bytes[6] & 0x0f) | 0x40;
-      bytes[8] = (bytes[8] & 0x3f) | 0x80;
-      const hex = Array.from(bytes, (byte) =>
-        byte.toString(16).padStart(2, "0")
-      );
-      return `${hex.slice(0, 4).join("")}-${hex
-        .slice(4, 6)
-        .join("")}-${hex.slice(6, 8).join("")}-${hex
-        .slice(8, 10)
-        .join("")}-${hex.slice(10, 16).join("")}`;
-    }
-  }
-  return `id-${String(Date.now())}-${Math.random().toString(16).slice(2)}`;
-}
-
-type UploadResponse = {
-  filename: string;
-  originalName: string;
-  mediaType: string;
-  size: number;
-  url: string;
-};
 
 export function ChatView({
   chatId,
@@ -327,10 +298,10 @@ function ChatBody({
       add: ({ file }: { file: File }) => {
         const validation = validateAttachment(platform, file.type, file.size);
         if (!validation.ok) {
-          throw new Error(validation.reason);
+          return Promise.reject(new Error(validation.reason));
         }
         const mediaType = file.type || "application/octet-stream";
-        return {
+        const pending: PendingAttachment = {
           id: generateClientId(),
           type: getUiAttachmentType(mediaType),
           name: file.name,
@@ -338,6 +309,7 @@ function ChatBody({
           file,
           status: { type: "requires-action", reason: "composer-send" },
         };
+        return Promise.resolve(pending);
       },
       send: async (attachment: PendingAttachment) => {
         const formData = new FormData();
@@ -352,13 +324,14 @@ function ChatBody({
         const data = (await res.json()) as UploadResponse;
         const name = data.originalName || attachment.name;
         const mediaType = data.mediaType || attachment.contentType;
-        return {
+        const complete: CompleteAttachment = {
           ...attachment,
           name,
           contentType: mediaType,
           status: { type: "complete" },
           content: buildAttachmentContent(data.url, mediaType, name),
         };
+        return complete;
       },
       remove: () => Promise.resolve(),
     };
@@ -378,7 +351,7 @@ function ChatBody({
           .filter((part): part is FilePart => Boolean(part));
         const parts: UIMessage["parts"] = [
           ...fileParts,
-          ...(text.trim() ? [{ type: "text", text }] : []),
+          ...(text.trim() ? [{ type: "text" as const, text }] : []),
         ];
         if (parts.length === 0) return;
         await chat.sendMessage({ parts });

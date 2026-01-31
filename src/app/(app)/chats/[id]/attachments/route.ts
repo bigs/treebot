@@ -2,14 +2,7 @@ import { getSession } from "@/lib/auth";
 import { getChatById } from "@/db/queries";
 import { storeAttachment } from "@/lib/attachments/storage";
 import type { Platform } from "@/db/schema";
-
-type UploadResponse = {
-  filename: string;
-  originalName: string;
-  mediaType: string;
-  size: number;
-  url: string;
-};
+import type { UploadResponse } from "@/lib/attachments/types";
 
 export async function POST(
   request: Request,
