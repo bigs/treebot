@@ -68,6 +68,7 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
   const draftConfigRef = useRef<{ modelId: string; reasoning?: string } | null>(
     null
   );
+  const draftEpochRef = useRef(0);
   const runtimeRef = useRef<AssistantRuntime | null>(null);
 
   // We use a single state for the selected model and reasoning to keep them in sync
@@ -138,6 +139,8 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
   }, [showReasoning, selection.reasoningLevel, selectedModel]);
 
   const cleanupDraft = useCallback(async () => {
+    const cleanupEpoch = draftEpochRef.current + 1;
+    draftEpochRef.current = cleanupEpoch;
     const existingChatId = draftChatIdRef.current;
     const pendingDraft = draftPromiseRef.current;
     draftChatIdRef.current = null;
@@ -152,7 +155,9 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
     if (pendingDraft) {
       try {
         const resolvedId = await pendingDraft;
-        await deleteChatAction(resolvedId);
+        if (draftEpochRef.current === cleanupEpoch) {
+          await deleteChatAction(resolvedId);
+        }
       } catch {
         // ignore cleanup failures
       }
@@ -221,6 +226,7 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
       await cleanupDraft();
     }
 
+    const epoch = draftEpochRef.current;
     const promise = (async () => {
       const result = await createDraftChatAction({
         provider: selectedModel.provider,
@@ -229,6 +235,9 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
       });
       if ("error" in result) {
         throw new Error(result.error);
+      }
+      if (draftEpochRef.current !== epoch) {
+        throw new Error("Draft was invalidated.");
       }
       draftChatIdRef.current = result.chatId;
       draftConfigRef.current = { modelId: selectedModel.id, reasoning };
@@ -239,7 +248,9 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
     try {
       return await promise;
     } finally {
-      draftPromiseRef.current = null;
+      if (draftPromiseRef.current === promise) {
+        draftPromiseRef.current = null;
+      }
     }
   }, [cleanupDraft, selectedModel, selection.reasoningLevel, showReasoning]);
 
