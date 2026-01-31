@@ -26,7 +26,6 @@ const MODEL_REASONING: Record<
   "gpt-5.2": {
     levels: [
       { value: "none", label: "None" },
-      { value: "minimal", label: "Minimal" },
       { value: "low", label: "Low" },
       { value: "medium", label: "Medium" },
       { value: "high", label: "High" },

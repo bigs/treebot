@@ -21,6 +21,8 @@ This is the current route map for the application, grouped by access level.
 ## API routes (authenticated)
 
 - `POST /chats/[id]/stream` stream assistant responses.
+- `POST /chats/[id]/attachments` upload a file attachment.
+- `GET /chats/[id]/attachments/[filename]` fetch an attachment for the chat owner.
 - `POST /chats/[id]/fork` create a forked chat from a message index.
 - `POST /chats/[id]/handoff/preview` generate a handoff summary preview.
 - `POST /chats/[id]/handoff` create a handoff child chat from the approved summary.

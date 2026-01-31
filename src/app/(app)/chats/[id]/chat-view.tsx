@@ -6,8 +6,8 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import {
   AssistantRuntimeProvider,
+  type PendingAttachment,
   type ExternalStoreAdapter,
-  type ThreadMessageLike,
   useExternalStoreRuntime,
 } from "@assistant-ui/react";
 import { Thread } from "@/components/assistant-ui/thread";
@@ -29,10 +29,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { ReasoningOption } from "@/lib/models";
+import type { Platform } from "@/db/schema";
+import { getAttachmentPolicy } from "@/lib/attachments/policy";
+import {
+  attachmentToFilePart,
+  toThreadMessageLike,
+  type FilePart,
+} from "@/lib/assistant-ui/conversion";
+import {
+  buildCompleteAttachment,
+  createPendingAttachment,
+} from "@/lib/attachments/adapter";
+import type { UploadResponse } from "@/lib/attachments/types";
+import { generateClientId } from "@/lib/client-id";
 import { Loader2 } from "lucide-react";
 
 interface ChatViewProps {
   chatId: string;
+  platform: Platform;
   modelName: string;
   reasoningLevels: ReasoningOption[];
   initialReasoningLevel: string;
@@ -45,99 +59,6 @@ interface ChatViewProps {
 
 const isChatRunning = (status: string) =>
   status === "streaming" || status === "submitted";
-
-const toThreadMessageLike = (
-  message: UIMessage,
-  idx: number
-): ThreadMessageLike => {
-  const resolvedId = message.id.trim() ? message.id : `message-${String(idx)}`;
-  // Build content array - using explicit type to avoid readonly issues
-  const contentArr: Array<
-    | { type: "text"; text: string }
-    | { type: "reasoning"; text: string }
-    | {
-        type: "source";
-        sourceType: "url";
-        id: string;
-        url: string;
-        title?: string;
-      }
-    | {
-        type: "tool-call";
-        toolCallId: string;
-        toolName: string;
-        args: Record<string, unknown>;
-        argsText: string;
-        result: unknown;
-        isError: boolean;
-      }
-    | { type: "data"; name: string; data: unknown }
-  > = [];
-  for (const part of message.parts) {
-    if (part.type === "text") {
-      contentArr.push({ type: "text", text: part.text });
-    } else if (part.type === "reasoning") {
-      contentArr.push({ type: "reasoning", text: part.text });
-    } else if (part.type === "source-url") {
-      contentArr.push({
-        type: "source",
-        sourceType: "url",
-        id: part.sourceId,
-        url: part.url,
-        title: part.title,
-      });
-    } else if (part.type === "dynamic-tool" || part.type.startsWith("tool-")) {
-      const toolPart = part as {
-        type: string;
-        toolName?: string;
-        toolCallId?: string;
-        input?: unknown;
-        output?: unknown;
-        errorText?: string;
-        state?: string;
-      };
-      const toolName =
-        toolPart.type === "dynamic-tool"
-          ? (toolPart.toolName ?? "tool")
-          : toolPart.type.slice("tool-".length);
-      const toolCallId = toolPart.toolCallId ?? `${toolName}-${resolvedId}`;
-      const input = toolPart.input;
-      const args =
-        input && typeof input === "object"
-          ? (input as Record<string, unknown>)
-          : {};
-      const argsText =
-        typeof input === "string" ? input : JSON.stringify(input ?? {});
-      const state = toolPart.state;
-      const result = toolPart.output;
-      const errorText = toolPart.errorText;
-
-      contentArr.push({
-        type: "tool-call",
-        toolCallId,
-        toolName,
-        args,
-        argsText,
-        result: result ?? errorText,
-        isError: state === "output-error" || state === "output-denied",
-      });
-    } else if (part.type.startsWith("data-")) {
-      const dataPart = part as { type: string; data: unknown };
-      contentArr.push({
-        type: "data",
-        name: part.type.slice("data-".length),
-        data: dataPart.data,
-      });
-    }
-  }
-
-  return {
-    role: message.role,
-    id: resolvedId,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
-    content: contentArr as any,
-  };
-};
 
 const HANDOFF_PROMPT_QUESTION =
   "Where do you want to lead the new conversation?";
@@ -167,32 +88,9 @@ The user's prompt for the handoff (include it verbatim at the end of your respon
 ${trimmed}`;
 }
 
-function generateClientId() {
-  if (typeof crypto !== "undefined") {
-    if (typeof crypto.randomUUID === "function") {
-      return crypto.randomUUID();
-    }
-    if (typeof crypto.getRandomValues === "function") {
-      const bytes = new Uint8Array(16);
-      crypto.getRandomValues(bytes);
-      // UUID v4 format.
-      bytes[6] = (bytes[6] & 0x0f) | 0x40;
-      bytes[8] = (bytes[8] & 0x3f) | 0x80;
-      const hex = Array.from(bytes, (byte) =>
-        byte.toString(16).padStart(2, "0")
-      );
-      return `${hex.slice(0, 4).join("")}-${hex
-        .slice(4, 6)
-        .join("")}-${hex.slice(6, 8).join("")}-${hex
-        .slice(8, 10)
-        .join("")}-${hex.slice(10, 16).join("")}`;
-    }
-  }
-  return `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
 export function ChatView({
   chatId,
+  platform,
   modelName,
   reasoningLevels,
   initialReasoningLevel,
@@ -332,6 +230,7 @@ export function ChatView({
 
       <ChatBody
         chatId={chatId}
+        platform={platform}
         initialMessages={initialMessages}
         onAssistantFinish={startTitlePolling}
       />
@@ -346,10 +245,12 @@ export function ChatView({
  */
 function ChatBody({
   chatId,
+  platform,
   initialMessages,
   onAssistantFinish,
 }: {
   chatId: string;
+  platform: Platform;
   initialMessages: UIMessage[];
   onAssistantFinish?: () => void;
 }) {
@@ -388,6 +289,36 @@ function ChatBody({
     },
   });
 
+  const attachmentAdapter = useMemo(() => {
+    const policy = getAttachmentPolicy(platform);
+    return {
+      accept: policy.accept,
+      add: ({ file }: { file: File }) => {
+        try {
+          return Promise.resolve(createPendingAttachment(platform, file));
+        } catch (err) {
+          return Promise.reject(
+            err instanceof Error ? err : new Error("Unsupported file")
+          );
+        }
+      },
+      send: async (attachment: PendingAttachment) => {
+        const formData = new FormData();
+        formData.append("file", attachment.file);
+        const res = await fetch(`/chats/${chatId}/attachments`, {
+          method: "POST",
+          body: formData,
+        });
+        if (!res.ok) {
+          throw new Error(await res.text());
+        }
+        const data = (await res.json()) as UploadResponse;
+        return buildCompleteAttachment(attachment, data);
+      },
+      remove: () => Promise.resolve(),
+    };
+  }, [chatId, platform]);
+
   const adapter = useMemo<ExternalStoreAdapter<UIMessage>>(
     () => ({
       messages: chat.messages,
@@ -397,8 +328,15 @@ function ChatBody({
           .filter((part) => part.type === "text")
           .map((part) => part.text)
           .join("\n\n");
-        if (!text.trim()) return;
-        await chat.sendMessage({ text });
+        const fileParts = (message.attachments ?? [])
+          .map((attachment) => attachmentToFilePart(attachment))
+          .filter((part): part is FilePart => Boolean(part));
+        const parts: UIMessage["parts"] = [
+          ...fileParts,
+          ...(text.trim() ? [{ type: "text" as const, text }] : []),
+        ];
+        if (parts.length === 0) return;
+        await chat.sendMessage({ parts });
       },
       onCancel: async () => {
         await chat.stop();
@@ -407,9 +345,19 @@ function ChatBody({
         await chat.regenerate();
       },
       convertMessage: (message, idx) => toThreadMessageLike(message, idx),
+      adapters: {
+        attachments: attachmentAdapter,
+      },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- specific chat properties are more stable than `chat` object
-    [chat.messages, chat.status, chat.sendMessage, chat.stop, chat.regenerate]
+    [
+      chat.messages,
+      chat.status,
+      chat.sendMessage,
+      chat.stop,
+      chat.regenerate,
+      attachmentAdapter,
+    ]
   );
 
   const runtime = useExternalStoreRuntime(adapter);

@@ -67,7 +67,6 @@ export async function generateChatTitle({
   const keyRow = getApiKeyByUserAndPlatform(userId, platform);
   if (!keyRow) return;
   const apiKey = decrypt(keyRow.encryptedKey);
-  const tools = buildTools(platform, apiKey);
 
   let titleModel;
   let titleProviderOptions;
@@ -79,6 +78,7 @@ export async function generateChatTitle({
     titleModel = createModel(platform, apiKey, modelId);
     titleProviderOptions = buildProviderOptions(platform, "none");
   }
+  const tools = buildTools(platform, apiKey);
 
   const conversationSummary = messages
     ? mode === "history"

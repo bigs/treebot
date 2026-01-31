@@ -204,7 +204,10 @@ export function updateChatTitle(chatId: string, userId: number, title: string) {
     .run();
 }
 
-export function deleteChatWithChildren(chatId: string, userId: number) {
+export function deleteChatWithChildren(
+  chatId: string,
+  userId: number
+): string[] {
   const userChats = db
     .select({ id: chats.id, parentId: chats.parentId })
     .from(chats)
@@ -225,7 +228,7 @@ export function deleteChatWithChildren(chatId: string, userId: number) {
 
   // Verify the target chat belongs to this user
   if (!userChats.some((c) => c.id === chatId)) {
-    return;
+    return [];
   }
 
   const toDelete: string[] = [];
@@ -240,4 +243,5 @@ export function deleteChatWithChildren(chatId: string, userId: number) {
   }
 
   db.delete(chats).where(inArray(chats.id, toDelete)).run();
+  return toDelete;
 }

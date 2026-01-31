@@ -14,6 +14,7 @@ import {
   getSystemPrompt,
 } from "@/lib/ai";
 import { generateChatTitle } from "@/lib/chat-title";
+import { inlineAttachmentMessages } from "@/lib/attachments/inline";
 import type { Platform } from "@/db/schema";
 import type { ModelParams } from "@/lib/models";
 
@@ -45,16 +46,26 @@ export async function POST(
   }
   const apiKey = decrypt(keyRow.encryptedKey);
 
-  const model = createModel(platform, apiKey, chat.model);
-  const tools = buildTools(platform, apiKey);
-
   const storedParams = chat.modelParams as ModelParams | null;
   const providerOptions = buildProviderOptions(
     platform,
     storedParams?.reasoning_effort
   );
+  const model = createModel(platform, apiKey, chat.model);
+  const tools = buildTools(platform, apiKey);
 
-  const modelMessages = await convertToModelMessages(uiMessages);
+  let modelMessagesInput = uiMessages;
+  try {
+    modelMessagesInput = await inlineAttachmentMessages(uiMessages, {
+      userId: session.sub,
+      chatId,
+      baseUrl: request.url,
+    });
+  } catch {
+    return new Response("Failed to load attachments", { status: 400 });
+  }
+
+  const modelMessages = await convertToModelMessages(modelMessagesInput);
 
   const result = streamText({
     model,
