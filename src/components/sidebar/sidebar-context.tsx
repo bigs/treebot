@@ -14,7 +14,6 @@ interface SidebarContextValue {
   mobileOpen: boolean;
   openMobile: () => void;
   closeMobile: () => void;
-  toggleMobile: () => void;
   expandedChats: Set<string>;
   toggleChat: (id: string) => void;
   expandChats: (ids: string[]) => void;
@@ -43,10 +42,6 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
 
   const closeMobile = useCallback(() => {
     setMobileOpen(false);
-  }, []);
-
-  const toggleMobile = useCallback(() => {
-    setMobileOpen((prev) => !prev);
   }, []);
 
   const toggleChat = useCallback((id: string) => {
@@ -80,7 +75,6 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
         mobileOpen,
         openMobile,
         closeMobile,
-        toggleMobile,
         expandedChats,
         toggleChat,
         expandChats,

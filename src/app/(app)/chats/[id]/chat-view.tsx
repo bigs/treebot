@@ -216,8 +216,18 @@ export function ChatView({
     document.documentElement.style.overflow = "hidden";
 
     const layoutHeightRef = { current: window.innerHeight };
+    const orientationRef = {
+      current: window.innerWidth > window.innerHeight ? "landscape" : "portrait",
+    };
     const updateLayoutHeight = () => {
       const next = window.innerHeight;
+      const orientation =
+        window.innerWidth > window.innerHeight ? "landscape" : "portrait";
+      if (orientation !== orientationRef.current) {
+        orientationRef.current = orientation;
+        layoutHeightRef.current = next;
+        return;
+      }
       if (next > layoutHeightRef.current) {
         layoutHeightRef.current = next;
       }
