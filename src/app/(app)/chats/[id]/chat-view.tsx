@@ -303,42 +303,46 @@ export function ChatView({
               </SelectContent>
             </Select>
           )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="hover:bg-muted text-foreground inline-flex size-8 items-center justify-center rounded-md md:hidden"
-                aria-label="Chat options"
-              >
-                <MoreHorizontal className="size-5" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Model</DropdownMenuLabel>
-              <div className="text-muted-foreground px-2 pb-2 text-sm">
-                {modelName}
-              </div>
-              {mounted && reasoningLevels.length > 0 ? (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel>Reasoning</DropdownMenuLabel>
-                  <DropdownMenuRadioGroup
-                    value={reasoningLevel}
-                    onValueChange={setReasoningLevel}
-                  >
-                    {reasoningLevels.map((level) => (
-                      <DropdownMenuRadioItem
-                        key={level.value}
-                        value={level.value}
-                      >
-                        {level.label} reasoning
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                </>
-              ) : null}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {mounted ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="hover:bg-muted text-foreground inline-flex size-8 items-center justify-center rounded-md md:hidden"
+                  aria-label="Chat options"
+                >
+                  <MoreHorizontal className="size-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Model</DropdownMenuLabel>
+                <div className="text-muted-foreground px-2 pb-2 text-sm">
+                  {modelName}
+                </div>
+                {reasoningLevels.length > 0 ? (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Reasoning</DropdownMenuLabel>
+                    <DropdownMenuRadioGroup
+                      value={reasoningLevel}
+                      onValueChange={setReasoningLevel}
+                    >
+                      {reasoningLevels.map((level) => (
+                        <DropdownMenuRadioItem
+                          key={level.value}
+                          value={level.value}
+                        >
+                          {level.label} reasoning
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </>
+                ) : null}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <div className="size-8 md:hidden" aria-hidden="true" />
+          )}
         </div>
       </header>
 
