@@ -237,6 +237,10 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
         throw new Error(result.error);
       }
       if (draftEpochRef.current !== epoch) {
+        const deletion = await deleteChatAction(result.chatId);
+        if ("error" in deletion) {
+          // Best-effort cleanup; ignore if it fails.
+        }
         throw new Error("Draft was invalidated.");
       }
       draftChatIdRef.current = result.chatId;

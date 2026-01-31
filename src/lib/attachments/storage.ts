@@ -1,6 +1,6 @@
 import { mkdir, rm, writeFile } from "fs/promises";
 import path from "path";
-import { getAttachmentCategory, validateAttachment } from "./policy";
+import { validateAttachment } from "./policy";
 import type { Platform } from "@/db/schema";
 
 const UPLOADS_ROOT = path.join(process.cwd(), "uploads");
@@ -20,11 +20,9 @@ const generateFilename = (originalName: string) => {
 
 export type StoredAttachment = {
   filename: string;
-  storagePath: string;
   urlPath: string;
   mediaType: string;
   size: number;
-  category: ReturnType<typeof getAttachmentCategory> | null;
 };
 
 export async function storeAttachment(params: {
@@ -54,11 +52,9 @@ export async function storeAttachment(params: {
     ok: true as const,
     attachment: {
       filename: safeFileName,
-      storagePath,
       urlPath: `/chats/${chatId}/attachments/${safeFileName}`,
       mediaType,
       size: bytes.byteLength,
-      category: validation.category,
     } satisfies StoredAttachment,
   };
 }
