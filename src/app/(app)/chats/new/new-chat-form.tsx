@@ -435,7 +435,7 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
-      <header className="border-b px-4 py-2">
+      <header className="border-b pb-2 pr-4 pl-[calc(env(safe-area-inset-left)+3.5rem)] pt-[calc(env(safe-area-inset-top)+0.75rem)] md:py-2 md:px-4">
         <div className="flex items-center gap-3">
           <h1 className="text-sm font-medium">New chat</h1>
           <Select

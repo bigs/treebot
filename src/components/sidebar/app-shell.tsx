@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import type { ChatNode } from "@/lib/chat-tree";
 import { SidebarProvider, useSidebar } from "./sidebar-context";
 import { Sidebar } from "./sidebar";
+import { cn } from "@/lib/utils";
 
 function ShellContent({
   username,
@@ -20,8 +21,10 @@ function ShellContent({
     <>
       <Sidebar username={username} chats={chats} />
       <main
-        className="min-h-screen transition-[margin-left] duration-200"
-        style={{ marginLeft: collapsed ? "3rem" : "16rem" }}
+        className={cn(
+          "min-h-screen transition-[margin-left] duration-200",
+          collapsed ? "md:ml-12" : "md:ml-64"
+        )}
       >
         {children}
       </main>
