@@ -278,7 +278,7 @@ export function ChatView({
       className="flex h-screen h-[100dvh] flex-col overflow-hidden"
       style={{ height: "var(--chat-viewport-height, 100dvh)" }}
     >
-      <header className="border-b pb-2 pr-4 pl-[calc(env(safe-area-inset-left)+3rem)] pt-[calc(env(safe-area-inset-top)+0.75rem)] md:py-2 md:px-4">
+      <header className="border-b pb-2 pr-4 pl-[calc(env(safe-area-inset-left)+3.5rem)] pt-[calc(env(safe-area-inset-top)+0.75rem)] md:py-2 md:px-4">
         <div className="flex items-center gap-2">
           <h1 className="min-w-0 flex-1 truncate text-sm font-medium md:flex-none md:max-w-[50%]">
             {title ?? modelName}
