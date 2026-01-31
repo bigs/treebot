@@ -289,34 +289,46 @@ const ComposerCompactAction: FC = () => {
   return (
     <div className="absolute right-2 top-1/2 -translate-y-1/2 md:hidden group-focus-within/compose:hidden">
       <AuiIf condition={({ thread }) => !thread.isRunning}>
-        <ComposerPrimitive.Send asChild>
-          <TooltipIconButton
-            tooltip="Send message"
-            side="bottom"
-            type="submit"
-            variant="default"
-            size="icon"
-            className="aui-composer-send size-8 rounded-full"
-            aria-label="Send message"
-          >
-            <ArrowUpIcon className="aui-composer-send-icon size-4" />
-          </TooltipIconButton>
-        </ComposerPrimitive.Send>
+        <ComposerSendButton />
       </AuiIf>
       <AuiIf condition={({ thread }) => thread.isRunning}>
-        <ComposerPrimitive.Cancel asChild>
-          <Button
-            type="button"
-            variant="default"
-            size="icon"
-            className="aui-composer-cancel size-8 rounded-full"
-            aria-label="Stop generating"
-          >
-            <SquareIcon className="aui-composer-cancel-icon size-3 fill-current" />
-          </Button>
-        </ComposerPrimitive.Cancel>
+        <ComposerCancelButton />
       </AuiIf>
     </div>
+  );
+};
+
+const ComposerSendButton: FC = () => {
+  return (
+    <ComposerPrimitive.Send asChild>
+      <TooltipIconButton
+        tooltip="Send message"
+        side="bottom"
+        type="submit"
+        variant="default"
+        size="icon"
+        className="aui-composer-send size-8 rounded-full"
+        aria-label="Send message"
+      >
+        <ArrowUpIcon className="aui-composer-send-icon size-4" />
+      </TooltipIconButton>
+    </ComposerPrimitive.Send>
+  );
+};
+
+const ComposerCancelButton: FC = () => {
+  return (
+    <ComposerPrimitive.Cancel asChild>
+      <Button
+        type="button"
+        variant="default"
+        size="icon"
+        className="aui-composer-cancel size-8 rounded-full"
+        aria-label="Stop generating"
+      >
+        <SquareIcon className="aui-composer-cancel-icon size-3 fill-current" />
+      </Button>
+    </ComposerPrimitive.Cancel>
   );
 };
 
@@ -332,32 +344,10 @@ const ComposerAction: FC<{ compactMobile?: boolean }> = ({
     >
       <ComposerAddAttachment />
       <AuiIf condition={({ thread }) => !thread.isRunning}>
-        <ComposerPrimitive.Send asChild>
-          <TooltipIconButton
-            tooltip="Send message"
-            side="bottom"
-            type="submit"
-            variant="default"
-            size="icon"
-            className="aui-composer-send size-8 rounded-full"
-            aria-label="Send message"
-          >
-            <ArrowUpIcon className="aui-composer-send-icon size-4" />
-          </TooltipIconButton>
-        </ComposerPrimitive.Send>
+        <ComposerSendButton />
       </AuiIf>
       <AuiIf condition={({ thread }) => thread.isRunning}>
-        <ComposerPrimitive.Cancel asChild>
-          <Button
-            type="button"
-            variant="default"
-            size="icon"
-            className="aui-composer-cancel size-8 rounded-full"
-            aria-label="Stop generating"
-          >
-            <SquareIcon className="aui-composer-cancel-icon size-3 fill-current" />
-          </Button>
-        </ComposerPrimitive.Cancel>
+        <ComposerCancelButton />
       </AuiIf>
     </div>
   );

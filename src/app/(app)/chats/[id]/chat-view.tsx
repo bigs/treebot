@@ -285,7 +285,7 @@ export function ChatView({
 
   return (
     <div
-      className="flex h-screen h-[100dvh] flex-col overflow-hidden"
+      className="flex flex-col overflow-hidden"
       style={{ height: "var(--chat-viewport-height, 100dvh)" }}
     >
       <header className="border-b pb-2 pr-4 pl-[calc(env(safe-area-inset-left)+3.5rem)] pt-[calc(env(safe-area-inset-top)+0.75rem)] md:py-2 md:px-4">
