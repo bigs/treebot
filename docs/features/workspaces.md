@@ -31,3 +31,6 @@ one workspace (Ephemera), created on first login or migration.
 On `/home` and workspace chat routes, press Command-K (macOS) or Ctrl-K (other
 platforms) to open a command menu. It lists workspaces in alphabetical order;
 selecting one navigates to that workspace.
+
+On workspace routes, Command-Shift-O (macOS) or Ctrl-Shift-O (other platforms)
+creates a new chat in the current workspace.
