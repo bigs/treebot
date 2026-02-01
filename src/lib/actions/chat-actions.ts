@@ -5,7 +5,8 @@ import { getSession } from "@/lib/auth";
 import {
   createChat,
   deleteChatWithChildren,
-  getChatById,
+  getChatByIdInWorkspace,
+  getWorkspaceById,
   updateChatTitle,
   updateChatMessages,
 } from "@/db/queries";
@@ -17,6 +18,7 @@ import type { ModelParams } from "@/lib/models";
 const VALID_PLATFORMS: Platform[] = ["google", "openai"];
 
 export async function createChatAction(input: {
+  workspaceId: string;
   provider: string;
   model: string;
   message: string;
@@ -41,6 +43,16 @@ export async function createChatAction(input: {
     return { error: "Model is required." };
   }
 
+  const workspaceId = input.workspaceId;
+  if (!workspaceId) {
+    return { error: "Workspace is required." };
+  }
+
+  const workspace = getWorkspaceById(workspaceId, session.sub);
+  if (!workspace) {
+    return { error: "Workspace not found." };
+  }
+
   const messages = [
     {
       id: crypto.randomUUID(),
@@ -53,6 +65,7 @@ export async function createChatAction(input: {
     : undefined;
   const chat = createChat(
     session.sub,
+    workspaceId,
     provider as Platform,
     input.model,
     messages,
@@ -61,6 +74,7 @@ export async function createChatAction(input: {
 
   generateChatTitle({
     chatId: chat.id,
+    workspaceId,
     userId: session.sub,
     platform: provider as Platform,
     modelId: input.model,
@@ -75,6 +89,7 @@ export async function createChatAction(input: {
 }
 
 export async function createDraftChatAction(input: {
+  workspaceId: string;
   provider: string;
   model: string;
   reasoningLevel?: string;
@@ -93,12 +108,23 @@ export async function createDraftChatAction(input: {
     return { error: "Model is required." };
   }
 
+  const workspaceId = input.workspaceId;
+  if (!workspaceId) {
+    return { error: "Workspace is required." };
+  }
+
+  const workspace = getWorkspaceById(workspaceId, session.sub);
+  if (!workspace) {
+    return { error: "Workspace not found." };
+  }
+
   const modelParams: ModelParams | undefined = input.reasoningLevel
     ? { reasoning_effort: input.reasoningLevel }
     : undefined;
 
   const chat = createChat(
     session.sub,
+    workspaceId,
     provider as Platform,
     input.model,
     [],
@@ -112,6 +138,7 @@ export async function createDraftChatAction(input: {
 
 export async function finalizeChatWithAttachmentsAction(input: {
   chatId: string;
+  workspaceId: string;
   message: string;
   attachments: Array<{
     url: string;
@@ -129,7 +156,12 @@ export async function finalizeChatWithAttachmentsAction(input: {
     return { error: "Chat ID is required." };
   }
 
-  const chat = getChatById(chatId, session.sub);
+  const workspaceId = input.workspaceId;
+  if (!workspaceId) {
+    return { error: "Workspace is required." };
+  }
+
+  const chat = getChatByIdInWorkspace(chatId, workspaceId, session.sub);
   if (!chat) {
     return { error: "Chat not found." };
   }
@@ -143,8 +175,9 @@ export async function finalizeChatWithAttachmentsAction(input: {
     return { error: "Message cannot be empty." };
   }
 
+  const attachmentPrefix = `/ws/${workspaceId}/chats/${chatId}/attachments/`;
   const safeAttachments = input.attachments.filter((attachment) =>
-    attachment.url.startsWith(`/chats/${chatId}/attachments/`)
+    attachment.url.startsWith(attachmentPrefix)
   );
 
   if (safeAttachments.length !== input.attachments.length) {
@@ -174,6 +207,7 @@ export async function finalizeChatWithAttachmentsAction(input: {
   if (trimmed) {
     generateChatTitle({
       chatId,
+      workspaceId,
       userId: session.sub,
       platform: chat.provider as Platform,
       modelId: chat.model,
@@ -188,19 +222,28 @@ export async function finalizeChatWithAttachmentsAction(input: {
   return { success: true };
 }
 
-export async function deleteChatAction(
-  chatId: string
-): Promise<{ success: true } | { error: string }> {
+export async function deleteChatAction(input: {
+  chatId: string;
+  workspaceId: string;
+}): Promise<{ success: true } | { error: string }> {
   const session = await getSession();
   if (!session) {
     return { error: "Not authenticated." };
   }
 
-  if (!chatId) {
+  if (!input.chatId) {
     return { error: "Chat ID is required." };
   }
 
-  const deletedChatIds = deleteChatWithChildren(chatId, session.sub);
+  if (!input.workspaceId) {
+    return { error: "Workspace is required." };
+  }
+
+  const deletedChatIds = deleteChatWithChildren(
+    input.chatId,
+    session.sub,
+    input.workspaceId
+  );
   await Promise.all(
     deletedChatIds.map((id) =>
       deleteAttachmentDir({ userId: session.sub, chatId: id })
@@ -213,7 +256,8 @@ export async function deleteChatAction(
 
 export async function renameChatAction(
   chatId: string,
-  title: string
+  title: string,
+  workspaceId: string
 ): Promise<{ success: true } | { error: string }> {
   const session = await getSession();
   if (!session) {
@@ -231,6 +275,7 @@ export async function renameChatAction(
 
   updateChatTitle(chatId, session.sub, cleaned);
   revalidatePath("/", "layout");
+  revalidatePath(`/ws/${workspaceId}/chats/${chatId}`);
 
   return { success: true };
 }

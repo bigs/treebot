@@ -55,7 +55,13 @@ function validReasoningForModel(
   return model.defaultReasoningLevel;
 }
 
-export function NewChatForm({ models }: { models: ModelInfo[] }) {
+export function NewChatForm({
+  models,
+  workspaceId,
+}: {
+  models: ModelInfo[];
+  workspaceId: string;
+}) {
   const router = useRouter();
   const [messages] = useState<UIMessage[]>([]);
   const [mounted, setMounted] = useState(false);
@@ -148,7 +154,7 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
     draftConfigRef.current = null;
 
     if (existingChatId) {
-      await deleteChatAction(existingChatId);
+      await deleteChatAction({ chatId: existingChatId, workspaceId });
       return;
     }
 
@@ -156,13 +162,13 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
       try {
         const resolvedId = await pendingDraft;
         if (draftEpochRef.current === cleanupEpoch) {
-          await deleteChatAction(resolvedId);
+          await deleteChatAction({ chatId: resolvedId, workspaceId });
         }
       } catch {
         // ignore cleanup failures
       }
     }
-  }, []);
+  }, [workspaceId]);
 
   const clearComposerAttachments = useCallback(() => {
     void runtimeRef.current?.thread.composer.clearAttachments();
@@ -229,6 +235,7 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
     const epoch = draftEpochRef.current;
     const promise = (async () => {
       const result = await createDraftChatAction({
+        workspaceId,
         provider: selectedModel.provider,
         model: selectedModel.id,
         reasoningLevel: reasoning,
@@ -237,7 +244,10 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
         throw new Error(result.error);
       }
       if (draftEpochRef.current !== epoch) {
-        const deletion = await deleteChatAction(result.chatId);
+        const deletion = await deleteChatAction({
+          chatId: result.chatId,
+          workspaceId,
+        });
         if ("error" in deletion) {
           // Best-effort cleanup; ignore if it fails.
         }
@@ -256,7 +266,13 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
         draftPromiseRef.current = null;
       }
     }
-  }, [cleanupDraft, selectedModel, selection.reasoningLevel, showReasoning]);
+  }, [
+    cleanupDraft,
+    selectedModel,
+    selection.reasoningLevel,
+    showReasoning,
+    workspaceId,
+  ]);
 
   const attachmentAdapter = useMemo(() => {
     if (!selectedModel) {
@@ -288,10 +304,13 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
         const chatId = await ensureDraftChatId();
         const formData = new FormData();
         formData.append("file", attachment.file);
-        const res = await fetch(`/chats/${chatId}/attachments`, {
+        const res = await fetch(
+          `/ws/${workspaceId}/chats/${chatId}/attachments`,
+          {
           method: "POST",
           body: formData,
-        });
+          }
+        );
         if (!res.ok) {
           throw new Error(await res.text());
         }
@@ -300,7 +319,7 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
       },
       remove: () => Promise.resolve(),
     };
-  }, [ensureDraftChatId, selectedModel]);
+  }, [ensureDraftChatId, selectedModel, workspaceId]);
 
   const handleNew = useCallback(
     async (message: ThreadMessageLike) => {
@@ -343,6 +362,7 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
           const chatId = await ensureDraftChatId();
           const result = (await finalizeChatWithAttachmentsAction({
             chatId,
+            workspaceId,
             message: trimmed,
             attachments,
           })) as { success: true } | { error: string };
@@ -353,10 +373,11 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
           draftPromiseRef.current = null;
           draftConfigRef.current = null;
           if (!controller.signal.aborted) {
-            router.push(`/chats/${chatId}`);
+            router.push(`/ws/${workspaceId}/chats/${chatId}`);
           }
         } else {
           const result = (await createChatAction({
+            workspaceId,
             provider: selectedModel.provider,
             model: selectedModel.id,
             message: trimmed,
@@ -368,7 +389,7 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
             throw new Error(result.error);
           }
           if (!controller.signal.aborted) {
-            router.push(`/chats/${result.chatId}`);
+            router.push(`/ws/${workspaceId}/chats/${result.chatId}`);
           }
         }
       } catch (err) {
@@ -388,6 +409,7 @@ export function NewChatForm({ models }: { models: ModelInfo[] }) {
       selectedModel,
       selection.reasoningLevel,
       showReasoning,
+      workspaceId,
     ]
   );
 

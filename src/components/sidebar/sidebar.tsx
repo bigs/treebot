@@ -1,21 +1,66 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { PanelLeft, SquarePen, Settings, X } from "lucide-react";
 import type { ChatNode } from "@/lib/chat-tree";
 import { useSidebar } from "./sidebar-context";
 import { ChatTree } from "./chat-tree";
 import { cn } from "@/lib/utils";
+import { getWorkspaceChatTreeAction } from "@/lib/actions/sidebar-actions";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export function Sidebar({
   username,
   chats,
+  workspaces,
+  activeWorkspaceId,
+  showChats,
 }: {
   username: string;
   chats: ChatNode[];
+  workspaces: { id: string; name: string }[];
+  activeWorkspaceId: string | null;
+  showChats: boolean;
 }) {
   const { collapsed, toggleSidebar, mobileOpen, openMobile, closeMobile } =
     useSidebar();
+  const router = useRouter();
+  const pathname = usePathname();
+  const derivedWorkspaceId = pathname.match(/^\/ws\/([^/]+)/)?.[1] ?? null;
+  const currentWorkspaceId = derivedWorkspaceId ?? activeWorkspaceId ?? null;
+  const shouldShowChats = showChats || Boolean(derivedWorkspaceId);
+  const [chatNodes, setChatNodes] = useState(chats);
+
+  useEffect(() => {
+    setChatNodes(chats);
+  }, [chats]);
+
+  useEffect(() => {
+    if (!currentWorkspaceId) {
+      setChatNodes([]);
+      return;
+    }
+    if (activeWorkspaceId === currentWorkspaceId) return;
+
+    const cancelledRef = { current: false };
+    void (async () => {
+      const result = await getWorkspaceChatTreeAction(currentWorkspaceId);
+      if (cancelledRef.current) return;
+      setChatNodes(result.chats);
+    })();
+
+    return () => {
+      cancelledRef.current = true;
+    };
+  }, [activeWorkspaceId, currentWorkspaceId]);
 
   return (
     <>
@@ -68,10 +113,15 @@ export function Sidebar({
             <X className="size-5" />
           </button>
           <Link
-            href="/chats/new"
+            href={
+              currentWorkspaceId
+                ? `/ws/${currentWorkspaceId}/chats/new`
+                : "/home"
+            }
             className={cn(
               "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ml-auto rounded-md p-1.5",
-              collapsed ? "md:hidden" : ""
+              collapsed || !shouldShowChats ? "md:hidden" : "",
+              !shouldShowChats ? "hidden" : ""
             )}
             aria-label="New chat"
             onClick={closeMobile}
@@ -80,15 +130,55 @@ export function Sidebar({
           </Link>
         </div>
 
-        {/* Chat tree */}
         <div
           className={cn(
-            "flex-1 overflow-y-auto px-2 py-1",
-            collapsed ? "md:hidden" : ""
+            "space-y-2 px-2 pt-2",
+            collapsed ? "md:hidden" : "",
+            workspaces.length === 0 ? "hidden" : ""
           )}
         >
-          <ChatTree nodes={chats} />
+          <Link
+            href="/home"
+            className="bg-foreground text-background hover:bg-foreground/90 flex w-full items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition"
+            onClick={closeMobile}
+          >
+            Home
+          </Link>
+          <Select
+            value={currentWorkspaceId ?? undefined}
+            onValueChange={(value) => {
+              router.push(`/ws/${value}`);
+              closeMobile();
+            }}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select workspace" />
+            </SelectTrigger>
+            <SelectContent align="start">
+              {workspaces.map((workspace) => (
+                <SelectItem key={workspace.id} value={workspace.id}>
+                  {workspace.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+
+        {/* Chat tree */}
+        {shouldShowChats && (
+          <div
+            className={cn(
+              "flex-1 overflow-y-auto px-2 py-1",
+              collapsed ? "md:hidden" : ""
+            )}
+          >
+            <ChatTree
+              nodes={chatNodes}
+              workspaceId={currentWorkspaceId}
+              workspaces={workspaces}
+            />
+          </div>
+        )}
 
         {/* Bottom bar */}
         <div className="border-sidebar-border flex h-12 shrink-0 items-center gap-2 border-t px-2">

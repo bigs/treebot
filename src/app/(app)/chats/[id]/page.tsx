@@ -1,11 +1,8 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
-import { getChatById } from "@/db/queries";
-import { getModels, type ModelParams } from "@/lib/models";
-import { ChatView } from "./chat-view";
-import type { UIMessage } from "ai";
+import { getWorkspaceIdForChat } from "@/db/queries";
 
-export default async function ChatDetailPage({
+export default async function LegacyChatPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -13,31 +10,14 @@ export default async function ChatDetailPage({
   const { id } = await params;
 
   const session = await getSession();
-  if (!session) notFound();
+  if (!session) {
+    redirect("/login");
+  }
 
-  const chat = getChatById(id, session.sub);
-  if (!chat) notFound();
+  const record = getWorkspaceIdForChat(id, session.sub);
+  if (!record) {
+    notFound();
+  }
 
-  const models = await getModels();
-  const modelInfo = models.find((m) => m.id === chat.model);
-
-  const storedParams = chat.modelParams as ModelParams | null;
-  const reasoningLevels = modelInfo?.reasoningLevels ?? [];
-  const initialReasoningLevel =
-    storedParams?.reasoning_effort ?? modelInfo?.defaultReasoningLevel ?? "";
-
-  return (
-    <ChatView
-      chatId={chat.id}
-      platform={chat.provider}
-      modelName={modelInfo?.name ?? chat.model}
-      reasoningLevels={reasoningLevels}
-      initialReasoningLevel={initialReasoningLevel}
-      initialMessages={chat.messages as UIMessage[]}
-      initialTitle={chat.title ?? undefined}
-      initialParentId={chat.parentId}
-      initialCreatedAt={chat.createdAt}
-      initialUpdatedAt={chat.updatedAt}
-    />
-  );
+  redirect(`/ws/${record.workspaceId}/chats/${id}`);
 }

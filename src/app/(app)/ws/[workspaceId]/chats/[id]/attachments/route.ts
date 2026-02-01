@@ -1,21 +1,21 @@
 import { getSession } from "@/lib/auth";
-import { getChatById } from "@/db/queries";
+import { getChatByIdInWorkspace } from "@/db/queries";
 import { storeAttachment } from "@/lib/attachments/storage";
 import type { Platform } from "@/db/schema";
 import type { UploadResponse } from "@/lib/attachments/types";
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string; workspaceId: string }> }
 ) {
-  const { id: chatId } = await params;
+  const { id: chatId, workspaceId } = await params;
 
   const session = await getSession();
   if (!session) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const chat = getChatById(chatId, session.sub);
+  const chat = getChatByIdInWorkspace(chatId, workspaceId, session.sub);
   if (!chat) {
     return new Response("Not found", { status: 404 });
   }
@@ -31,7 +31,7 @@ export async function POST(
   const stored = await storeAttachment({
     platform: chat.provider as Platform,
     userId: session.sub,
-    workspaceId: chat.workspaceId,
+    workspaceId,
     chatId,
     filename: file.name,
     mediaType,
