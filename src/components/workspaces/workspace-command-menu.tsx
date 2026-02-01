@@ -26,6 +26,9 @@ export function WorkspaceCommandMenu({
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const enabled = pathname === "/home" || pathname.startsWith("/ws/");
+  const workspaceMatch = pathname.match(/^\/ws\/([^/]+)/);
+  const currentWorkspaceId = workspaceMatch ? workspaceMatch[1] : null;
+  const canCreateChat = currentWorkspaceId != null;
   const sortedWorkspaces = useMemo(
     () =>
       [...workspaces].sort((a, b) =>
@@ -48,6 +51,26 @@ export function WorkspaceCommandMenu({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [enabled]);
+
+  useEffect(() => {
+    if (!canCreateChat) return;
+
+    const workspaceId = currentWorkspaceId;
+    if (!workspaceId) return;
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key.toLowerCase() !== "o") return;
+      if (!event.shiftKey) return;
+      if (!event.metaKey && !event.ctrlKey) return;
+      if (event.repeat) return;
+
+      event.preventDefault();
+      router.push(`/ws/${workspaceId}/chats/new`);
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [canCreateChat, currentWorkspaceId, router]);
 
   if (!enabled) return null;
 
