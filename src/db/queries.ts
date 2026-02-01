@@ -422,6 +422,33 @@ function collectChatSubtreeIds(
   return collected;
 }
 
+function rewriteAttachmentUrls(
+  messages: unknown,
+  chatId: string,
+  fromWorkspaceId: string,
+  toWorkspaceId: string
+): { updated: unknown; changed: boolean } {
+  const fromPrefix = `/ws/${fromWorkspaceId}/chats/${chatId}/attachments/`;
+  const toPrefix = `/ws/${toWorkspaceId}/chats/${chatId}/attachments/`;
+  let serialized: string | undefined;
+  try {
+    serialized = JSON.stringify(messages);
+  } catch {
+    return { updated: messages, changed: false };
+  }
+  if (!serialized) {
+    return { updated: messages, changed: false };
+  }
+  if (!serialized.includes(fromPrefix)) {
+    return { updated: messages, changed: false };
+  }
+  const replaced = serialized.replaceAll(fromPrefix, toPrefix);
+  if (replaced === serialized) {
+    return { updated: messages, changed: false };
+  }
+  return { updated: JSON.parse(replaced), changed: true };
+}
+
 export function deleteChatWithChildren(
   chatId: string,
   userId: number,
@@ -451,6 +478,26 @@ export function moveChatWithChildren(
     .set({ workspaceId: toWorkspaceId })
     .where(inArray(chats.id, toMove))
     .run();
+
+  const rows = db
+    .select({ id: chats.id, messages: chats.messages })
+    .from(chats)
+    .where(and(eq(chats.userId, userId), inArray(chats.id, toMove)))
+    .all();
+
+  for (const row of rows) {
+    const { updated, changed } = rewriteAttachmentUrls(
+      row.messages,
+      row.id,
+      fromWorkspaceId,
+      toWorkspaceId
+    );
+    if (!changed) continue;
+    db.update(chats)
+      .set({ messages: updated })
+      .where(and(eq(chats.id, row.id), eq(chats.userId, userId)))
+      .run();
+  }
 
   return toMove;
 }
