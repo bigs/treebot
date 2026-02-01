@@ -34,3 +34,6 @@ selecting one navigates to that workspace.
 
 On workspace routes, Command-Shift-O (macOS) or Ctrl-Shift-O (other platforms)
 creates a new chat in the current workspace.
+
+On workspace routes, Command-Shift-K (macOS) or Ctrl-Shift-K (other platforms)
+opens a chat switcher for the current workspace.
