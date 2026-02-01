@@ -18,16 +18,17 @@ This project is a Next.js 16 App Router application. The structure below explain
 - `src/app/page.tsx` is the entry route that redirects users to onboarding, login, or home based on user count and session.
 - `src/app/(auth)/` contains public auth pages (`/login`, `/register`).
 - `src/app/(app)/` contains authenticated pages (`/home`, `/ws/*`, `/settings`). Legacy `/chats/*` routes redirect to `/ws/*`.
+- `src/app/(app)/(shell)/` wraps non-workspace pages in the sidebar shell (`/home`, `/settings`).
+- `src/app/(app)/ws/[workspaceId]/` wraps workspace routes with the sidebar shell and workspace chat tree.
 - `src/app/onboarding/` contains the first-run setup flow (`/onboarding/step-1`, `/onboarding/step-2`).
 
 ## App shell hierarchy
 
-Protected pages are wrapped by the `(app)` layout in `src/app/(app)/layout.tsx`, which:
+Protected pages are wrapped by layered layouts:
 
-1. Verifies the session.
-2. Loads the user’s workspaces.
-3. If a workspace route is active, loads that workspace’s chats and builds the tree.
-4. Renders `AppShell` from `src/components/sidebar/app-shell.tsx`.
+1. `src/app/(app)/layout.tsx` verifies the session and enforces admin API key setup.
+2. `src/app/(app)/(shell)/layout.tsx` loads workspaces and renders `AppShell` for `/home` and `/settings`.
+3. `src/app/(app)/ws/[workspaceId]/layout.tsx` loads workspaces plus the chat tree for that workspace and renders `AppShell`.
 
 `AppShell` creates the sidebar layout, composed as:
 
