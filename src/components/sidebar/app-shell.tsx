@@ -33,7 +33,7 @@ function ShellContent({
         activeWorkspaceId={activeWorkspaceId}
         showChats={showChats}
       />
-      <WorkspaceCommandMenu workspaces={workspaces} />
+      <WorkspaceCommandMenu workspaces={workspaces} chats={chats} />
       <main
         className={cn(
           "min-h-screen transition-[margin-left] duration-200",
