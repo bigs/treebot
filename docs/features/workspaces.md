@@ -25,3 +25,9 @@ one workspace (Ephemera), created on first login or migration.
 - Moving a chat moves all of its branches to the destination workspace. If the
   active chat moves, the UI navigates to the new workspace URL; otherwise the
   sidebar refreshes.
+
+## Command menu
+
+On `/home` and workspace chat routes, press Command-K (macOS) or Ctrl-K (other
+platforms) to open a command menu. It lists workspaces in alphabetical order;
+selecting one navigates to that workspace.
