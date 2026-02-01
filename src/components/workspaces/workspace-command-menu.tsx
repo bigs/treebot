@@ -10,7 +10,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type Workspace = {
   id: string;
@@ -65,6 +65,9 @@ export function WorkspaceCommandMenu({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="overflow-hidden p-0" showCloseButton={false}>
+        <DialogHeader>
+          <DialogTitle className="sr-only">Choose a workspace</DialogTitle>
+        </DialogHeader>
         <Command>
           <CommandInput placeholder="Choose a workspace..." autoFocus />
           <CommandList>
