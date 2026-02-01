@@ -5,6 +5,7 @@ import type { ChatNode } from "@/lib/chat-tree";
 import { SidebarProvider, useSidebar } from "./sidebar-context";
 import { Sidebar } from "./sidebar";
 import { cn } from "@/lib/utils";
+import { WorkspaceCommandMenu } from "@/components/workspaces/workspace-command-menu";
 
 function ShellContent({
   username,
@@ -32,6 +33,7 @@ function ShellContent({
         activeWorkspaceId={activeWorkspaceId}
         showChats={showChats}
       />
+      <WorkspaceCommandMenu workspaces={workspaces} />
       <main
         className={cn(
           "min-h-screen transition-[margin-left] duration-200",
