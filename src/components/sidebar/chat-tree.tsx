@@ -63,11 +63,13 @@ function ChatTreeItem({
   depth,
   workspaceId,
   workspaces,
+  onRefresh,
 }: {
   node: ChatNode;
   depth: number;
   workspaceId: string;
   workspaces: { id: string; name: string }[];
+  onRefresh: (workspaceId: string) => void;
 }) {
   const { expandedChats, toggleChat, closeMobile } = useSidebar();
   const pathname = usePathname();
@@ -155,7 +157,7 @@ function ChatTreeItem({
         router.push(`/ws/${destinationId}/chats/${activeChatId}`);
         closeMobile();
       } else {
-        router.refresh();
+        onRefresh(workspaceId);
       }
     }
   }
@@ -303,7 +305,6 @@ function ChatTreeItem({
                             if (workspace.id === workspaceId) return;
                             setSelectedWorkspaceId(workspace.id);
                             setComboboxOpen(false);
-                            void handleMove(workspace.id);
                           }}
                         >
                           <Check
@@ -388,6 +389,7 @@ function ChatTreeItem({
               depth={depth + 1}
               workspaceId={workspaceId}
               workspaces={workspaces}
+              onRefresh={onRefresh}
             />
           ))}
         </div>
@@ -400,10 +402,12 @@ export function ChatTree({
   nodes,
   workspaceId,
   workspaces,
+  onRefresh,
 }: {
   nodes: ChatNode[];
   workspaceId: string | null;
   workspaces: { id: string; name: string }[];
+  onRefresh: (workspaceId: string) => void;
 }) {
   const { expandChats } = useSidebar();
   const pathname = usePathname();
@@ -447,6 +451,7 @@ export function ChatTree({
           depth={0}
           workspaceId={workspaceId}
           workspaces={workspaces}
+          onRefresh={onRefresh}
         />
       ))}
     </div>

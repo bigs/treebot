@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { PanelLeft, SquarePen, Settings, X } from "lucide-react";
 import type { ChatNode } from "@/lib/chat-tree";
@@ -38,17 +38,23 @@ export function Sidebar({
   const currentWorkspaceId = derivedWorkspaceId ?? activeWorkspaceId ?? null;
   const shouldShowChats = showChats || Boolean(derivedWorkspaceId);
   const [chatNodes, setChatNodes] = useState(chats);
+  const visibleChatNodes = currentWorkspaceId ? chatNodes : [];
+  const refreshWorkspaceChats = useCallback(
+    (workspaceId: string | null = currentWorkspaceId) => {
+      void (async () => {
+        if (!workspaceId) {
+          setChatNodes([]);
+          return;
+        }
+        const result = await getWorkspaceChatTreeAction(workspaceId);
+        setChatNodes(result.chats);
+      })();
+    },
+    [currentWorkspaceId]
+  );
 
   useEffect(() => {
-    setChatNodes(chats);
-  }, [chats]);
-
-  useEffect(() => {
-    if (!currentWorkspaceId) {
-      setChatNodes([]);
-      return;
-    }
-    if (activeWorkspaceId === currentWorkspaceId) return;
+    if (!currentWorkspaceId) return;
 
     const cancelledRef = { current: false };
     void (async () => {
@@ -60,7 +66,7 @@ export function Sidebar({
     return () => {
       cancelledRef.current = true;
     };
-  }, [activeWorkspaceId, currentWorkspaceId]);
+  }, [currentWorkspaceId, pathname]);
 
   return (
     <>
@@ -173,9 +179,10 @@ export function Sidebar({
             )}
           >
             <ChatTree
-              nodes={chatNodes}
+              nodes={visibleChatNodes}
               workspaceId={currentWorkspaceId}
               workspaces={workspaces}
+              onRefresh={refreshWorkspaceChats}
             />
           </div>
         )}
