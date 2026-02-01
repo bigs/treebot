@@ -54,19 +54,8 @@ export function Sidebar({
   );
 
   useEffect(() => {
-    if (!currentWorkspaceId) return;
-
-    const cancelledRef = { current: false };
-    void (async () => {
-      const result = await getWorkspaceChatTreeAction(currentWorkspaceId);
-      if (cancelledRef.current) return;
-      setChatNodes(result.chats);
-    })();
-
-    return () => {
-      cancelledRef.current = true;
-    };
-  }, [currentWorkspaceId, pathname]);
+    setChatNodes(chats);
+  }, [chats]);
 
   return (
     <>

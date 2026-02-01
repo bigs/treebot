@@ -332,19 +332,6 @@ export function getChatByIdInWorkspace(
     .get();
 }
 
-export function getChatTitleById(chatId: string, userId: number) {
-  return db
-    .select({
-      id: chats.id,
-      title: chats.title,
-      updatedAt: chats.updatedAt,
-      workspaceId: chats.workspaceId,
-    })
-    .from(chats)
-    .where(and(eq(chats.id, chatId), eq(chats.userId, userId)))
-    .get();
-}
-
 export function getChatTitleByIdInWorkspace(
   chatId: string,
   workspaceId: string,
@@ -388,7 +375,7 @@ export function updateChatTitle(chatId: string, userId: number, title: string) {
     .run();
 }
 
-export function deleteChatWithChildren(
+function collectChatSubtreeIds(
   chatId: string,
   userId: number,
   workspaceId: string
@@ -401,8 +388,12 @@ export function deleteChatWithChildren(
     )
     .all();
 
+  let hasRoot = false;
   const childrenMap = new Map<string, string[]>();
   for (const chat of userChats) {
+    if (chat.id === chatId) {
+      hasRoot = true;
+    }
     if (chat.parentId != null) {
       const siblings = childrenMap.get(chat.parentId);
       if (siblings) {
@@ -413,20 +404,32 @@ export function deleteChatWithChildren(
     }
   }
 
-  // Verify the target chat belongs to this user
-  if (!userChats.some((c) => c.id === chatId)) {
+  if (!hasRoot) {
     return [];
   }
 
-  const toDelete: string[] = [];
+  const collected: string[] = [];
   const stack = [chatId];
   while (stack.length > 0) {
     const id = stack.pop()!;
-    toDelete.push(id);
+    collected.push(id);
     const children = childrenMap.get(id);
     if (children) {
       stack.push(...children);
     }
+  }
+
+  return collected;
+}
+
+export function deleteChatWithChildren(
+  chatId: string,
+  userId: number,
+  workspaceId: string
+): string[] {
+  const toDelete = collectChatSubtreeIds(chatId, userId, workspaceId);
+  if (toDelete.length === 0) {
+    return [];
   }
 
   db.delete(chats).where(inArray(chats.id, toDelete)).run();
@@ -439,39 +442,9 @@ export function moveChatWithChildren(
   fromWorkspaceId: string,
   toWorkspaceId: string
 ): string[] {
-  const userChats = db
-    .select({ id: chats.id, parentId: chats.parentId })
-    .from(chats)
-    .where(
-      and(eq(chats.userId, userId), eq(chats.workspaceId, fromWorkspaceId))
-    )
-    .all();
-
-  const childrenMap = new Map<string, string[]>();
-  for (const chat of userChats) {
-    if (chat.parentId != null) {
-      const siblings = childrenMap.get(chat.parentId);
-      if (siblings) {
-        siblings.push(chat.id);
-      } else {
-        childrenMap.set(chat.parentId, [chat.id]);
-      }
-    }
-  }
-
-  if (!userChats.some((c) => c.id === chatId)) {
+  const toMove = collectChatSubtreeIds(chatId, userId, fromWorkspaceId);
+  if (toMove.length === 0) {
     return [];
-  }
-
-  const toMove: string[] = [];
-  const stack = [chatId];
-  while (stack.length > 0) {
-    const id = stack.pop()!;
-    toMove.push(id);
-    const children = childrenMap.get(id);
-    if (children) {
-      stack.push(...children);
-    }
   }
 
   db.update(chats)
