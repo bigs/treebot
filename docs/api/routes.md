@@ -1,12 +1,15 @@
 # API routes
 
-All API routes are in the App Router under `src/app/(app)/chats/[id]/`. They require an authenticated session cookie.
+All API routes are in the App Router under
+`src/app/(app)/ws/[workspaceId]/chats/[id]/`. They require an authenticated
+session cookie. Legacy `/chats/*` routes redirect to the workspace-scoped
+handlers.
 
-## POST /chats/[id]/stream
+## POST /ws/[workspaceId]/chats/[id]/stream
 
 Streams assistant responses for a chat.
 
-**File:** `src/app/(app)/chats/[id]/stream/route.ts`
+**File:** `src/app/(app)/ws/[workspaceId]/chats/[id]/stream/route.ts`
 
 **Auth:** Required (session cookie)
 
@@ -31,11 +34,11 @@ Streams assistant responses for a chat.
 - `404 Not found` if the chat does not exist for the user.
 - `400 No API key configured for <platform>` if the user lacks a provider key.
 
-## POST /chats/[id]/attachments
+## POST /ws/[workspaceId]/chats/[id]/attachments
 
 Uploads a file attachment for the current chat.
 
-**File:** `src/app/(app)/chats/[id]/attachments/route.ts`
+**File:** `src/app/(app)/ws/[workspaceId]/chats/[id]/attachments/route.ts`
 
 **Auth:** Required (session cookie)
 
@@ -51,7 +54,7 @@ Uploads a file attachment for the current chat.
   "originalName": "original-filename.ext",
   "mediaType": "image/png",
   "size": 123456,
-  "url": "/chats/<id>/attachments/stored-filename.ext"
+  "url": "/ws/<workspaceId>/chats/<id>/attachments/stored-filename.ext"
 }
 ```
 
@@ -62,11 +65,11 @@ Uploads a file attachment for the current chat.
 - `400 Invalid file upload` if the payload is malformed.
 - `400 Unsupported file type` or `400 File is too large` if validation fails.
 
-## GET /chats/[id]/attachments/[filename]
+## GET /ws/[workspaceId]/chats/[id]/attachments/[filename]
 
 Serves an uploaded attachment for the authenticated chat owner.
 
-**File:** `src/app/(app)/chats/[id]/attachments/[filename]/route.ts`
+**File:** `src/app/(app)/ws/[workspaceId]/chats/[id]/attachments/[filename]/route.ts`
 
 **Auth:** Required (session cookie)
 
@@ -79,11 +82,11 @@ Serves an uploaded attachment for the authenticated chat owner.
 - `401 Unauthorized` if not logged in.
 - `404 Not found` if the chat or file does not exist for the user.
 
-## POST /chats/[id]/fork
+## POST /ws/[workspaceId]/chats/[id]/fork
 
 Creates a forked chat from a specific message index.
 
-**File:** `src/app/(app)/chats/[id]/fork/route.ts`
+**File:** `src/app/(app)/ws/[workspaceId]/chats/[id]/fork/route.ts`
 
 **Auth:** Required (session cookie)
 
@@ -113,11 +116,11 @@ Creates a forked chat from a specific message index.
 - `400 Index out of range` if the index exceeds the message list.
 - `400 Invalid chat messages` if stored messages are malformed.
 
-## POST /chats/[id]/handoff/preview
+## POST /ws/[workspaceId]/chats/[id]/handoff/preview
 
 Generates a handoff summary preview for a selected assistant message.
 
-**File:** `src/app/(app)/chats/[id]/handoff/preview/route.ts`
+**File:** `src/app/(app)/ws/[workspaceId]/chats/[id]/handoff/preview/route.ts`
 
 **Auth:** Required (session cookie)
 
@@ -154,11 +157,11 @@ Generates a handoff summary preview for a selected assistant message.
 - `400 Handoff only supported for assistant messages` if the index points to a user message.
 - `400 No API key configured for <platform>` if the user lacks a provider key.
 
-## POST /chats/[id]/handoff
+## POST /ws/[workspaceId]/chats/[id]/handoff
 
 Creates a handoff child chat from the approved summary text.
 
-**File:** `src/app/(app)/chats/[id]/handoff/route.ts`
+**File:** `src/app/(app)/ws/[workspaceId]/chats/[id]/handoff/route.ts`
 
 **Auth:** Required (session cookie)
 
@@ -193,11 +196,11 @@ Creates a handoff child chat from the approved summary text.
 - `400 Text cannot be empty` if the approved summary is blank.
 - `400 Handoff only supported for assistant messages` if the index points to a user message.
 
-## GET /chats/[id]/title
+## GET /ws/[workspaceId]/chats/[id]/title
 
 Fetches the latest title and update timestamp for a chat.
 
-**File:** `src/app/(app)/chats/[id]/title/route.ts`
+**File:** `src/app/(app)/ws/[workspaceId]/chats/[id]/title/route.ts`
 
 **Auth:** Required (session cookie)
 

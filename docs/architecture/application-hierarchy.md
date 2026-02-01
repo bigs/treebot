@@ -17,7 +17,7 @@ This project is a Next.js 16 App Router application. The structure below explain
 - `src/app/layout.tsx` is the root layout (fonts, global CSS).
 - `src/app/page.tsx` is the entry route that redirects users to onboarding, login, or home based on user count and session.
 - `src/app/(auth)/` contains public auth pages (`/login`, `/register`).
-- `src/app/(app)/` contains authenticated pages (`/home`, `/chats/*`, `/settings`).
+- `src/app/(app)/` contains authenticated pages (`/home`, `/ws/*`, `/settings`). Legacy `/chats/*` routes redirect to `/ws/*`.
 - `src/app/onboarding/` contains the first-run setup flow (`/onboarding/step-1`, `/onboarding/step-2`).
 
 ## App shell hierarchy
@@ -25,8 +25,8 @@ This project is a Next.js 16 App Router application. The structure below explain
 Protected pages are wrapped by the `(app)` layout in `src/app/(app)/layout.tsx`, which:
 
 1. Verifies the session.
-2. Loads the user’s chat list from the DB.
-3. Builds the chat tree.
+2. Loads the user’s workspaces.
+3. If a workspace route is active, loads that workspace’s chats and builds the tree.
 4. Renders `AppShell` from `src/components/sidebar/app-shell.tsx`.
 
 `AppShell` creates the sidebar layout, composed as:
@@ -42,6 +42,6 @@ Mobile layout notes:
 ## Supporting layers
 
 - **Server actions:** `src/lib/actions/*` handles form-driven mutations (auth, chat create/delete, API keys, password changes).
-- **AI integration:** `src/lib/ai.ts`, `src/lib/models.ts`, and chat routes under `src/app/(app)/chats/[id]/`.
+- **AI integration:** `src/lib/ai.ts`, `src/lib/models.ts`, and chat routes under `src/app/(app)/ws/[workspaceId]/chats/[id]/`.
 - **Chat UI:** `src/components/assistant-ui/*` wraps assistant-ui primitives and renders the chat thread.
 - **Auth/session:** `src/lib/auth.ts` for JWT cookies; session checks are performed in layouts and route handlers.
