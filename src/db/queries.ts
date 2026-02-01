@@ -201,6 +201,35 @@ export function getWorkspaceIdForChat(chatId: string, userId: number) {
     .get();
 }
 
+export function getChatIdsByWorkspace(userId: number, workspaceId: string) {
+  return db
+    .select({ id: chats.id })
+    .from(chats)
+    .where(
+      and(eq(chats.userId, userId), eq(chats.workspaceId, workspaceId))
+    )
+    .all()
+    .map((row) => row.id);
+}
+
+export function deleteChatsByWorkspace(userId: number, workspaceId: string) {
+  return db
+    .delete(chats)
+    .where(
+      and(eq(chats.userId, userId), eq(chats.workspaceId, workspaceId))
+    )
+    .run();
+}
+
+export function deleteWorkspaceById(userId: number, workspaceId: string) {
+  return db
+    .delete(workspaces)
+    .where(
+      and(eq(workspaces.userId, userId), eq(workspaces.id, workspaceId))
+    )
+    .run();
+}
+
 export function createChat(
   userId: number,
   workspaceId: string,

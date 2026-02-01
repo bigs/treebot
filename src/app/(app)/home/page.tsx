@@ -1,9 +1,8 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { getRecentChatsByWorkspace, getWorkspacesByUser } from "@/db/queries";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NewWorkspaceButton } from "@/components/workspaces/new-workspace-button";
+import { WorkspaceCard } from "@/components/workspaces/workspace-card";
 
 export default async function HomePage() {
   const session = await getSession();
@@ -30,39 +29,11 @@ export default async function HomePage() {
           </div>
         ) : (
           workspaces.map((workspace) => (
-            <Card key={workspace.id} className="relative overflow-hidden">
-              <Link
-                href={`/ws/${workspace.id}`}
-                className="absolute inset-0 z-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label={`Open ${workspace.name}`}
-              />
-              <div className="pointer-events-none relative z-10">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">{workspace.name}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {workspace.chats.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">
-                      No conversations yet.
-                    </p>
-                  ) : (
-                    workspace.chats.map((chat) => (
-                      <div
-                        key={chat.id}
-                        className="pointer-events-auto rounded-md border bg-muted/60 transition hover:bg-muted"
-                      >
-                        <Link
-                          href={`/ws/${workspace.id}/chats/${chat.id}`}
-                          className="block px-3 py-2 text-sm font-medium"
-                        >
-                          {chat.title ?? "Untitled"}
-                        </Link>
-                      </div>
-                    ))
-                  )}
-                </CardContent>
-              </div>
-            </Card>
+            <WorkspaceCard
+              key={workspace.id}
+              workspace={{ id: workspace.id, name: workspace.name }}
+              chats={workspace.chats}
+            />
           ))
         )}
       </div>

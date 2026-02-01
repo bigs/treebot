@@ -4,9 +4,14 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import {
   createWorkspace,
+  deleteChatsByWorkspace,
+  deleteWorkspaceById,
+  getChatIdsByWorkspace,
   getWorkspaceById,
   moveChatWithChildren,
 } from "@/db/queries";
+import { db } from "@/db";
+import { deleteAttachmentDir } from "@/lib/attachments/storage";
 
 export async function createWorkspaceAction(input: {
   name: string;
@@ -69,6 +74,43 @@ export async function moveChatToWorkspaceAction(input: {
   revalidatePath("/", "layout");
   revalidatePath(`/ws/${fromWorkspaceId}`);
   revalidatePath(`/ws/${toWorkspaceId}`);
+
+  return { success: true };
+}
+
+export async function deleteWorkspaceAction(input: {
+  workspaceId: string;
+}): Promise<{ success: true } | { error: string }> {
+  const session = await getSession();
+  if (!session) {
+    return { error: "Not authenticated." };
+  }
+
+  const { workspaceId } = input;
+  if (!workspaceId) {
+    return { error: "Workspace is required." };
+  }
+
+  const workspace = getWorkspaceById(workspaceId, session.sub);
+  if (!workspace) {
+    return { error: "Workspace not found." };
+  }
+
+  const chatIds = getChatIdsByWorkspace(session.sub, workspaceId);
+  await Promise.all(
+    chatIds.map((chatId) =>
+      deleteAttachmentDir({ userId: session.sub, chatId })
+    )
+  );
+
+  db.transaction(() => {
+    deleteChatsByWorkspace(session.sub, workspaceId);
+    deleteWorkspaceById(session.sub, workspaceId);
+  });
+
+  revalidatePath("/", "layout");
+  revalidatePath("/home");
+  revalidatePath(`/ws/${workspaceId}`);
 
   return { success: true };
 }
