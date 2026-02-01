@@ -41,17 +41,6 @@ export function WorkspaceCommandMenu({
       if (event.key.toLowerCase() !== "k") return;
       if (!event.metaKey && !event.ctrlKey) return;
 
-      const target = event.target as HTMLElement | null;
-      const tagName = target?.tagName;
-      if (
-        tagName === "INPUT" ||
-        tagName === "TEXTAREA" ||
-        tagName === "SELECT" ||
-        target?.isContentEditable
-      ) {
-        return;
-      }
-
       event.preventDefault();
       setOpen((prev) => !prev);
     }
