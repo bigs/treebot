@@ -38,6 +38,22 @@ export const apiKeys = sqliteTable(
   ]
 );
 
+export const workspaces = sqliteTable("workspaces", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id),
+  name: text("name").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+});
+
 export const chats = sqliteTable("chats", {
   id: text("id")
     .primaryKey()
@@ -45,6 +61,9 @@ export const chats = sqliteTable("chats", {
   userId: integer("user_id")
     .notNull()
     .references(() => users.id),
+  workspaceId: text("workspace_id")
+    .notNull()
+    .references(() => workspaces.id),
   parentId: text("parent_id"),
   provider: text("provider", { enum: ["google", "openai"] }).notNull(),
   model: text("model").notNull(),

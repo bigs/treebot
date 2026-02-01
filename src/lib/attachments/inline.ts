@@ -6,6 +6,7 @@ import { getAttachmentPath } from "./storage";
 type AttachmentInlineContext = {
   userId: number;
   chatId: string;
+  workspaceId: string;
   baseUrl: string;
 };
 
@@ -20,8 +21,14 @@ async function inlineAttachmentPart(
   if (!part.url || part.url.startsWith("data:")) return part;
 
   const resolved = new URL(part.url, context.baseUrl);
-  const prefix = `/chats/${context.chatId}/attachments/`;
-  if (!resolved.pathname.startsWith(prefix)) return part;
+  const workspacePrefix = `/ws/${context.workspaceId}/chats/${context.chatId}/attachments/`;
+  const legacyPrefix = `/chats/${context.chatId}/attachments/`;
+  if (
+    !resolved.pathname.startsWith(workspacePrefix) &&
+    !resolved.pathname.startsWith(legacyPrefix)
+  ) {
+    return part;
+  }
 
   const filename = path.basename(resolved.pathname);
   const filePath = getAttachmentPath({

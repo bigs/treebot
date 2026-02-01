@@ -2,7 +2,7 @@ import { streamText, convertToModelMessages, type UIMessage } from "ai";
 import { randomUUID } from "crypto";
 import { getSession } from "@/lib/auth";
 import {
-  getChatById,
+  getChatByIdInWorkspace,
   getApiKeyByUserAndPlatform,
   updateChatMessages,
 } from "@/db/queries";
@@ -20,16 +20,16 @@ import type { ModelParams } from "@/lib/models";
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string; workspaceId: string }> }
 ) {
-  const { id: chatId } = await params;
+  const { id: chatId, workspaceId } = await params;
 
   const session = await getSession();
   if (!session) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const chat = getChatById(chatId, session.sub);
+  const chat = getChatByIdInWorkspace(chatId, workspaceId, session.sub);
   if (!chat) {
     return new Response("Not found", { status: 404 });
   }
@@ -58,6 +58,7 @@ export async function POST(
   try {
     modelMessagesInput = await inlineAttachmentMessages(uiMessages, {
       userId: session.sub,
+      workspaceId,
       chatId,
       baseUrl: request.url,
     });
@@ -93,6 +94,7 @@ export async function POST(
       if (chat.title == null || shouldRegenerateTitle) {
         generateChatTitle({
           chatId,
+          workspaceId,
           userId: session.sub,
           platform,
           modelId: chat.model,

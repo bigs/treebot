@@ -22,6 +22,13 @@
       "when": 1769641033474,
       "tag": "0002_black_wallop",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1769910433013,
+      "tag": "0003_fixed_grey_gargoyle",
+      "breakpoints": true
     }
   ]
 }

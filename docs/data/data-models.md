@@ -24,12 +24,25 @@ Encrypted API keys per user and provider.
 
 Unique index on `(user_id, platform)`.
 
-## chats
+## workspaces
 
-Stores chat threads and their fork relationships.
+Groups chats for a user.
 
 - `id` (text, PK, UUID)
 - `user_id` (FK -> users.id)
+- `name` (text)
+- `created_at`, `updated_at` (ISO timestamps)
+
+Each user has at least one workspace (Ephemera). Chats belong to exactly one
+workspace via `workspace_id`.
+
+## chats
+
+Stores chat threads and their fork relationships within a workspace.
+
+- `id` (text, PK, UUID)
+- `user_id` (FK -> users.id)
+- `workspace_id` (FK -> workspaces.id)
 - `parent_id` (nullable text, points to another chat for forks)
 - `provider` (enum: `google` | `openai`)
 - `model` (text, model ID)

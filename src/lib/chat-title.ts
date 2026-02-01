@@ -7,6 +7,7 @@ import type { Platform } from "@/db/schema";
 
 type TitleInput = {
   chatId: string;
+  workspaceId?: string;
   userId: number;
   platform: Platform;
   modelId: string;
@@ -57,6 +58,7 @@ function buildSummaryFromPrompt(prompt: string): string {
 
 export async function generateChatTitle({
   chatId,
+  workspaceId,
   userId,
   platform,
   modelId,
@@ -106,5 +108,8 @@ export async function generateChatTitle({
 
   updateChatTitle(chatId, userId, cleaned);
   revalidatePath("/", "layout");
+  if (workspaceId) {
+    revalidatePath(`/ws/${workspaceId}/chats/${chatId}`);
+  }
   revalidatePath(`/chats/${chatId}`);
 }

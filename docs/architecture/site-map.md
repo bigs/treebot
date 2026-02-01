@@ -13,19 +13,22 @@ This is the current route map for the application, grouped by access level.
 
 ## Authenticated routes
 
-- `/home` list or landing page for chats.
-- `/chats/new` create a new chat (model selection + initial message).
-- `/chats/[id]` view and interact with a specific chat thread.
+- `/home` list of workspaces and recent chats.
+- `/ws/[workspaceId]` workspace landing page (redirects to new chat if empty).
+- `/ws/[workspaceId]/chats/new` create a new chat in a workspace.
+- `/ws/[workspaceId]/chats/[id]` view and interact with a specific chat thread.
 - `/settings` change password and (admin only) update provider API keys.
+
+Legacy chat routes under `/chats/*` redirect to the workspace-scoped routes.
 
 ## API routes (authenticated)
 
-- `POST /chats/[id]/stream` stream assistant responses.
-- `POST /chats/[id]/attachments` upload a file attachment.
-- `GET /chats/[id]/attachments/[filename]` fetch an attachment for the chat owner.
-- `POST /chats/[id]/fork` create a forked chat from a message index.
-- `POST /chats/[id]/handoff/preview` generate a handoff summary preview.
-- `POST /chats/[id]/handoff` create a handoff child chat from the approved summary.
-- `GET /chats/[id]/title` fetch the latest title for a chat.
+- `POST /ws/[workspaceId]/chats/[id]/stream` stream assistant responses.
+- `POST /ws/[workspaceId]/chats/[id]/attachments` upload a file attachment.
+- `GET /ws/[workspaceId]/chats/[id]/attachments/[filename]` fetch an attachment.
+- `POST /ws/[workspaceId]/chats/[id]/fork` create a forked chat from a message index.
+- `POST /ws/[workspaceId]/chats/[id]/handoff/preview` generate a handoff summary preview.
+- `POST /ws/[workspaceId]/chats/[id]/handoff` create a handoff child chat from the approved summary.
+- `GET /ws/[workspaceId]/chats/[id]/title` fetch the latest title for a chat.
 
 See [API routes](../api/routes.md) for request/response details.

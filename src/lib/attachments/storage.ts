@@ -28,12 +28,14 @@ export type StoredAttachment = {
 export async function storeAttachment(params: {
   platform: Platform;
   userId: number;
+  workspaceId: string;
   chatId: string;
   filename: string;
   mediaType: string;
   bytes: Uint8Array;
 }) {
-  const { platform, userId, chatId, filename, mediaType, bytes } = params;
+  const { platform, userId, workspaceId, chatId, filename, mediaType, bytes } =
+    params;
   const validation = validateAttachment(platform, mediaType, bytes.byteLength);
   if (!validation.ok) {
     return { ok: false as const, error: validation.reason };
@@ -52,7 +54,7 @@ export async function storeAttachment(params: {
     ok: true as const,
     attachment: {
       filename: safeFileName,
-      urlPath: `/chats/${chatId}/attachments/${safeFileName}`,
+      urlPath: `/ws/${workspaceId}/chats/${chatId}/attachments/${safeFileName}`,
       mediaType,
       size: bytes.byteLength,
     } satisfies StoredAttachment,

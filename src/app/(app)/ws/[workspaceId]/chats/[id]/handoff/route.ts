@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import { getSession } from "@/lib/auth";
-import { createForkedChat, getChatById } from "@/db/queries";
+import { createForkedChat, getChatByIdInWorkspace } from "@/db/queries";
 import type { ModelParams } from "@/lib/models";
 
 type HandoffCreateRequest = {
@@ -19,16 +19,16 @@ function isAssistantMessage(value: unknown): value is { role: string } {
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string; workspaceId: string }> }
 ) {
-  const { id: chatId } = await params;
+  const { id: chatId, workspaceId } = await params;
 
   const session = await getSession();
   if (!session) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const chat = getChatById(chatId, session.sub);
+  const chat = getChatByIdInWorkspace(chatId, workspaceId, session.sub);
   if (!chat) {
     return new Response("Not found", { status: 404 });
   }
@@ -78,6 +78,7 @@ export async function POST(
 
   const fork = createForkedChat(
     session.sub,
+    workspaceId,
     chatId,
     chat.provider,
     chat.model,

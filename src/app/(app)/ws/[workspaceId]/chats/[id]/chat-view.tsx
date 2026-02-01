@@ -54,6 +54,7 @@ import { generateClientId } from "@/lib/client-id";
 import { Loader2, MoreHorizontal } from "lucide-react";
 
 interface ChatViewProps {
+  workspaceId: string;
   chatId: string;
   platform: Platform;
   modelName: string;
@@ -98,6 +99,7 @@ ${trimmed}`;
 }
 
 export function ChatView({
+  workspaceId,
   chatId,
   platform,
   modelName,
@@ -170,7 +172,7 @@ export function ChatView({
       pollAttemptsRef.current += 1;
 
       try {
-        const res = await fetch(`/chats/${chatId}/title`, {
+        const res = await fetch(`/ws/${workspaceId}/chats/${chatId}/title`, {
           cache: "no-store",
         });
         if (res.ok) {
@@ -238,7 +240,7 @@ export function ChatView({
         document.documentElement.style.setProperty("--keyboard-offset", "0px");
         document.documentElement.style.setProperty(
           "--chat-viewport-height",
-          `${layoutHeightRef.current}px`
+          `${String(layoutHeightRef.current)}px`
         );
         return;
       }
@@ -248,11 +250,11 @@ export function ChatView({
       );
       document.documentElement.style.setProperty(
         "--keyboard-offset",
-        `${offset}px`
+        `${String(offset)}px`
       );
       document.documentElement.style.setProperty(
         "--chat-viewport-height",
-        `${layoutHeightRef.current - offset}px`
+        `${String(layoutHeightRef.current - offset)}px`
       );
     };
     const handleResize = () => {
@@ -357,6 +359,7 @@ export function ChatView({
       </header>
 
       <ChatBody
+        workspaceId={workspaceId}
         chatId={chatId}
         platform={platform}
         initialMessages={initialMessages}
@@ -372,11 +375,13 @@ export function ChatView({
  * which caused a hydration mismatch.
  */
 function ChatBody({
+  workspaceId,
   chatId,
   platform,
   initialMessages,
   onAssistantFinish,
 }: {
+  workspaceId: string;
   chatId: string;
   platform: Platform;
   initialMessages: UIMessage[];
@@ -404,7 +409,10 @@ function ChatBody({
   }, []);
 
   const [transport] = useState(
-    () => new DefaultChatTransport({ api: `/chats/${chatId}/stream` })
+    () =>
+      new DefaultChatTransport({
+        api: `/ws/${workspaceId}/chats/${chatId}/stream`,
+      })
   );
 
   const chat = useChat({
@@ -433,10 +441,13 @@ function ChatBody({
       send: async (attachment: PendingAttachment) => {
         const formData = new FormData();
         formData.append("file", attachment.file);
-        const res = await fetch(`/chats/${chatId}/attachments`, {
-          method: "POST",
-          body: formData,
-        });
+        const res = await fetch(
+          `/ws/${workspaceId}/chats/${chatId}/attachments`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
         if (!res.ok) {
           throw new Error(await res.text());
         }
@@ -445,7 +456,7 @@ function ChatBody({
       },
       remove: () => Promise.resolve(),
     };
-  }, [chatId, platform]);
+  }, [chatId, platform, workspaceId]);
 
   const adapter = useMemo<ExternalStoreAdapter<UIMessage>>(
     () => ({
@@ -503,24 +514,27 @@ function ChatBody({
 
   const requestHandoffPreview = useCallback(
     async (messages: UIMessage[], index: number) => {
-      const res = await fetch(`/chats/${chatId}/handoff/preview`, {
+      const res = await fetch(
+        `/ws/${workspaceId}/chats/${chatId}/handoff/preview`,
+        {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ index, messages }),
-      });
+        }
+      );
       if (!res.ok) {
         throw new Error(await res.text());
       }
       const data = (await res.json()) as { message: UIMessage };
       return data.message;
     },
-    [chatId]
+    [chatId, workspaceId]
   );
 
   const handleFork = useCallback(
     async (messageIndex: number) => {
       try {
-        const res = await fetch(`/chats/${chatId}/fork`, {
+        const res = await fetch(`/ws/${workspaceId}/chats/${chatId}/fork`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ index: messageIndex }),
@@ -530,13 +544,13 @@ function ChatBody({
           return;
         }
         const data = (await res.json()) as { chatId: string };
-        router.push(`/chats/${data.chatId}`);
+        router.push(`/ws/${workspaceId}/chats/${data.chatId}`);
         router.refresh();
       } catch (err) {
         console.error("Failed to fork chat", err);
       }
     },
-    [chatId, router]
+    [chatId, router, workspaceId]
   );
 
   const handleHandoffStart = useCallback((messageIndex: number) => {
@@ -630,7 +644,7 @@ function ChatBody({
     setHandoffError(null);
 
     try {
-      const res = await fetch(`/chats/${chatId}/handoff`, {
+      const res = await fetch(`/ws/${workspaceId}/chats/${chatId}/handoff`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ index: handoffIndex, text: previewText }),
@@ -641,7 +655,7 @@ function ChatBody({
       const data = (await res.json()) as { chatId: string };
       setHandoffPreviewOpen(false);
       resetHandoffState();
-      router.push(`/chats/${data.chatId}`);
+      router.push(`/ws/${workspaceId}/chats/${data.chatId}`);
       router.refresh();
     } catch (err) {
       setHandoffError(
@@ -650,7 +664,14 @@ function ChatBody({
     } finally {
       setHandoffAccepting(false);
     }
-  }, [chatId, handoffIndex, handoffPreviewMessage, resetHandoffState, router]);
+  }, [
+    chatId,
+    handoffIndex,
+    handoffPreviewMessage,
+    resetHandoffState,
+    router,
+    workspaceId,
+  ]);
 
   const previewText = handoffPreviewMessage
     ? extractTextFromParts(handoffPreviewMessage.parts)

@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  ArrowRightLeft,
   ChevronRight,
+  Check,
+  ChevronsUpDown,
   Ellipsis,
   MessageSquare,
   Pencil,
@@ -12,6 +15,7 @@ import {
 } from "lucide-react";
 import { useSidebar } from "./sidebar-context";
 import { deleteChatAction, renameChatAction } from "@/lib/actions/chat-actions";
+import { moveChatToWorkspaceAction } from "@/lib/actions/workspace-actions";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,21 +32,67 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import type { ChatNode } from "@/lib/chat-tree";
+import { cn } from "@/lib/utils";
 
-function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
+function ChatTreeItem({
+  node,
+  depth,
+  workspaceId,
+  workspaces,
+  onRefresh,
+}: {
+  node: ChatNode;
+  depth: number;
+  workspaceId: string;
+  workspaces: { id: string; name: string }[];
+  onRefresh: (workspaceId: string) => void;
+}) {
   const { expandedChats, toggleChat, closeMobile } = useSidebar();
   const pathname = usePathname();
   const router = useRouter();
   const hasChildren = node.children.length > 0;
   const isExpanded = expandedChats.has(node.id);
-  const isActive = pathname === `/chats/${node.id}`;
+  const isActive = pathname === `/ws/${workspaceId}/chats/${node.id}`;
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState(node.title);
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [comboboxOpen, setComboboxOpen] = useState(false);
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(
+    null
+  );
+  const moveInputRef = useRef<HTMLInputElement>(null);
+  const activeChatIdMatch = pathname.match(/^\/ws\/[^/]+\/chats\/([^/]+)/);
+  const activeChatId = activeChatIdMatch ? activeChatIdMatch[1] : null;
+  const selectedWorkspace = selectedWorkspaceId
+    ? workspaces.find((workspace) => workspace.id === selectedWorkspaceId)
+    : null;
 
   function collectIds(n: ChatNode): string[] {
     return [n.id, ...n.children.flatMap(collectIds)];
@@ -51,13 +101,12 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
   async function handleDelete() {
     const idsToDelete = new Set(collectIds(node));
     const isViewingDeleted =
-      pathname.startsWith("/chats/") &&
-      idsToDelete.has(pathname.split("/chats/")[1]);
+      activeChatId != null && idsToDelete.has(activeChatId);
 
-    await deleteChatAction(node.id);
+    await deleteChatAction({ chatId: node.id, workspaceId });
 
     if (isViewingDeleted) {
-      router.push("/chats/new");
+      router.push(`/ws/${workspaceId}/chats/new`);
     }
   }
 
@@ -67,6 +116,16 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
     setRenameValue(node.title);
   }, [node.title, renameOpen]);
 
+  const handleMoveOpenChange = (nextOpen: boolean) => {
+    setMoveOpen(nextOpen);
+    if (!nextOpen) return;
+    setComboboxOpen(true);
+    setSelectedWorkspaceId(null);
+    window.setTimeout(() => {
+      moveInputRef.current?.focus();
+    }, 0);
+  };
+
   async function handleRename() {
     const trimmed = renameValue.trim();
     if (!trimmed) return;
@@ -74,11 +133,33 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
       setRenameOpen(false);
       return;
     }
-    const result = await renameChatAction(node.id, trimmed);
+    const result = await renameChatAction(node.id, trimmed, workspaceId);
     if (!("error" in result)) {
       router.refresh();
     }
     setRenameOpen(false);
+  }
+
+  async function handleMove(targetWorkspaceId?: string) {
+    const destinationId = targetWorkspaceId ?? selectedWorkspaceId;
+    if (!destinationId || destinationId === workspaceId) return;
+    const result = await moveChatToWorkspaceAction({
+      chatId: node.id,
+      fromWorkspaceId: workspaceId,
+      toWorkspaceId: destinationId,
+    });
+    if (!("error" in result)) {
+      const idsToMove = new Set(collectIds(node));
+      setMoveOpen(false);
+      setComboboxOpen(false);
+      setSelectedWorkspaceId(null);
+      if (activeChatId && idsToMove.has(activeChatId)) {
+        router.push(`/ws/${destinationId}/chats/${activeChatId}`);
+        closeMobile();
+      } else {
+        onRefresh(workspaceId);
+      }
+    }
   }
 
   return (
@@ -105,7 +186,7 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
             </button>
           ) : null}
           <Link
-            href={`/chats/${node.id}`}
+            href={`/ws/${workspaceId}/chats/${node.id}`}
             className="flex min-w-0 flex-1 items-center gap-2"
             onClick={closeMobile}
           >
@@ -129,6 +210,15 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" side="right">
+            <DropdownMenuItem
+              onClick={() => {
+                setDropdownOpen(false);
+                handleMoveOpenChange(true);
+              }}
+            >
+              <ArrowRightLeft className="size-4" />
+              Move
+            </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
                 setDropdownOpen(false);
@@ -172,6 +262,94 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
         </AlertDialogContent>
       </AlertDialog>
 
+      <Dialog open={moveOpen} onOpenChange={handleMoveOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Move chat</DialogTitle>
+            <DialogDescription>
+              Choose a workspace for this chat and its branches.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={comboboxOpen}
+                  className="w-full justify-between"
+                >
+                  <span className="truncate">
+                    {selectedWorkspace
+                      ? selectedWorkspace.name
+                      : "Select workspace"}
+                  </span>
+                  <ChevronsUpDown className="size-4 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-full p-0">
+                <Command>
+                  <CommandInput
+                    ref={moveInputRef}
+                    placeholder="Search workspace..."
+                  />
+                  <CommandList>
+                    <CommandEmpty>No workspaces found.</CommandEmpty>
+                    <CommandGroup>
+                      {workspaces.map((workspace) => (
+                        <CommandItem
+                          key={workspace.id}
+                          value={workspace.name}
+                          disabled={workspace.id === workspaceId}
+                          onSelect={() => {
+                            if (workspace.id === workspaceId) return;
+                            setSelectedWorkspaceId(workspace.id);
+                            setComboboxOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 size-4",
+                              selectedWorkspaceId === workspace.id
+                                ? "opacity-100"
+                                : "opacity-0"
+                            )}
+                          />
+                          <span className="truncate">{workspace.name}</span>
+                          {workspace.id === workspaceId ? (
+                            <span className="text-muted-foreground ml-auto text-xs">
+                              Current
+                            </span>
+                          ) : null}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setMoveOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleMove()}
+              disabled={
+                !selectedWorkspaceId || selectedWorkspaceId === workspaceId
+              }
+            >
+              Move
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={renameOpen} onOpenChange={setRenameOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -205,7 +383,14 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
       {hasChildren && isExpanded && (
         <div>
           {node.children.map((child) => (
-            <ChatTreeItem key={child.id} node={child} depth={depth + 1} />
+            <ChatTreeItem
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              workspaceId={workspaceId}
+              workspaces={workspaces}
+              onRefresh={onRefresh}
+            />
           ))}
         </div>
       )}
@@ -213,13 +398,24 @@ function ChatTreeItem({ node, depth }: { node: ChatNode; depth: number }) {
   );
 }
 
-export function ChatTree({ nodes }: { nodes: ChatNode[] }) {
+export function ChatTree({
+  nodes,
+  workspaceId,
+  workspaces,
+  onRefresh,
+}: {
+  nodes: ChatNode[];
+  workspaceId: string | null;
+  workspaces: { id: string; name: string }[];
+  onRefresh: (workspaceId: string) => void;
+}) {
   const { expandChats } = useSidebar();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!pathname.startsWith("/chats/")) return;
-    const activeId = pathname.split("/chats/")[1];
+    if (!workspaceId) return;
+    const match = pathname.match(/^\/ws\/[^/]+\/chats\/([^/]+)/);
+    const activeId = match ? match[1] : null;
     if (!activeId) return;
 
     function findPath(current: ChatNode, targetId: string): string[] | null {
@@ -242,12 +438,21 @@ export function ChatTree({ nodes }: { nodes: ChatNode[] }) {
       idsToExpand.add(path[path.length - 1]);
     }
     expandChats([...idsToExpand]);
-  }, [expandChats, nodes, pathname]);
+  }, [expandChats, nodes, pathname, workspaceId]);
+
+  if (!workspaceId) return null;
 
   return (
     <div className="space-y-0.5">
       {nodes.map((node) => (
-        <ChatTreeItem key={node.id} node={node} depth={0} />
+        <ChatTreeItem
+          key={node.id}
+          node={node}
+          depth={0}
+          workspaceId={workspaceId}
+          workspaces={workspaces}
+          onRefresh={onRefresh}
+        />
       ))}
     </div>
   );
