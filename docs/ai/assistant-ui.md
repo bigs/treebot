@@ -21,7 +21,13 @@ The adapter uses `toThreadMessageLike()` to translate AI SDK `UIMessage` parts (
 - Custom components inject behavior for:
   - **Forking:** the thread action bar can call `onFork` with a message index.
   - **Scrolling:** custom logic keeps the view pinned during streaming.
-  - **Suggestions and welcome state:** rendered when the thread is empty.
+- **Suggestions and welcome state:** rendered when the thread is empty.
+
+### Mobile layout and keyboard handling
+
+- `ChatView` pins the document body and uses `visualViewport` to set `--chat-viewport-height` and `--keyboard-offset`, keeping the header and composer stable while the iOS keyboard is open.
+- The thread root uses the CSS var height, and the composer footer uses the keyboard offset so it stays visible.
+- On mobile chat pages, the composer defaults to a compact state with the send button inline; focusing expands it.
 
 ## Message rendering and extensions
 

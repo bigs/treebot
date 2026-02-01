@@ -33,6 +33,12 @@ Protected pages are wrapped by the `(app)` layout in `src/app/(app)/layout.tsx`,
 
 - `AppShell` -> `SidebarProvider` -> `ShellContent` -> `Sidebar` + `<main>`
 
+Mobile layout notes:
+
+- `Sidebar` becomes an off-canvas panel with a fixed open button; `SidebarProvider` tracks `mobileOpen`.
+- Selecting a chat closes the mobile sidebar so the thread content is full-width.
+- Chat/new chat headers include safe-area padding so titles clear the notch and sidebar toggle.
+
 ## Supporting layers
 
 - **Server actions:** `src/lib/actions/*` handles form-driven mutations (auth, chat create/delete, API keys, password changes).
