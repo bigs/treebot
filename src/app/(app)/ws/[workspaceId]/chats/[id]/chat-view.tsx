@@ -697,7 +697,6 @@ function ChatBody({
           <Thread
             onFork={(idx) => void handleFork(idx)}
             onHandoff={(idx) => handleHandoffStart(idx)}
-            compactMobileComposer
           />
         </AssistantRuntimeProvider>
       ) : null}
