@@ -13,6 +13,7 @@ import {
   useExternalStoreRuntime,
 } from "@assistant-ui/react";
 import { Composer } from "@/components/assistant-ui/thread";
+import { TitleBar } from "@/components/title-bar";
 import {
   Select,
   SelectContent,
@@ -457,7 +458,7 @@ export function NewChatForm({
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
-      <header className="border-b pb-2 pr-4 pl-[calc(env(safe-area-inset-left)+3.5rem)] pt-[calc(env(safe-area-inset-top)+0.75rem)] md:py-2 md:px-4">
+      <TitleBar>
         <div className="flex flex-col items-start gap-3 md:flex-row md:items-center md:gap-3">
           <h1 className="text-sm font-medium">New chat</h1>
           <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center md:gap-3">
@@ -504,7 +505,7 @@ export function NewChatForm({
             )}
           </div>
         </div>
-      </header>
+      </TitleBar>
 
       <div className="min-h-0 flex-1">
         {mounted ? (
