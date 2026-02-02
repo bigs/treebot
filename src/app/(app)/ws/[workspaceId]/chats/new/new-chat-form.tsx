@@ -458,49 +458,51 @@ export function NewChatForm({
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       <header className="border-b pb-2 pr-4 pl-[calc(env(safe-area-inset-left)+3.5rem)] pt-[calc(env(safe-area-inset-top)+0.75rem)] md:py-2 md:px-4">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col items-start gap-3 md:flex-row md:items-center md:gap-3">
           <h1 className="text-sm font-medium">New chat</h1>
-          <Select
-            value={selection.modelId}
-            onValueChange={handleModelChange}
-            disabled={isSending}
-          >
-            <SelectTrigger className="w-[220px]">
-              <SelectValue placeholder="Select a model" />
-            </SelectTrigger>
-            <SelectContent>
-              {[...grouped.entries()].map(([providerName, providerModels]) => (
-                <SelectGroup key={providerName}>
-                  <SelectLabel>{providerName}</SelectLabel>
-                  {providerModels.map((model) => (
-                    <SelectItem key={model.id} value={model.id}>
-                      {model.name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {showReasoning && (
+          <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center md:gap-3">
             <Select
-              key={selection.modelId}
-              value={selection.reasoningLevel}
-              onValueChange={handleReasoningChange}
+              value={selection.modelId}
+              onValueChange={handleModelChange}
               disabled={isSending}
             >
-              <SelectTrigger className="w-[160px]" size="sm">
-                <SelectValue placeholder="Reasoning" />
+              <SelectTrigger className="w-full md:w-[220px]">
+                <SelectValue placeholder="Select a model" />
               </SelectTrigger>
               <SelectContent>
-                {selectedModel.reasoningLevels.map((level) => (
-                  <SelectItem key={level.value} value={level.value}>
-                    {level.label} reasoning
-                  </SelectItem>
+                {[...grouped.entries()].map(([providerName, providerModels]) => (
+                  <SelectGroup key={providerName}>
+                    <SelectLabel>{providerName}</SelectLabel>
+                    {providerModels.map((model) => (
+                      <SelectItem key={model.id} value={model.id}>
+                        {model.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 ))}
               </SelectContent>
             </Select>
-          )}
+
+            {showReasoning && (
+              <Select
+                key={selection.modelId}
+                value={selection.reasoningLevel}
+                onValueChange={handleReasoningChange}
+                disabled={isSending}
+              >
+                <SelectTrigger className="w-full md:w-[160px]" size="sm">
+                  <SelectValue placeholder="Reasoning" />
+                </SelectTrigger>
+                <SelectContent>
+                  {selectedModel.reasoningLevels.map((level) => (
+                    <SelectItem key={level.value} value={level.value}>
+                      {level.label} reasoning
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
         </div>
       </header>
 
