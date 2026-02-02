@@ -38,6 +38,7 @@ export function Sidebar({
   const currentWorkspaceId = derivedWorkspaceId ?? activeWorkspaceId ?? null;
   const shouldShowChats = showChats || Boolean(derivedWorkspaceId);
   const [chatNodes, setChatNodes] = useState(chats);
+  const [mounted, setMounted] = useState(false);
   const visibleChatNodes = currentWorkspaceId ? chatNodes : [];
   const refreshWorkspaceChats = useCallback(
     (workspaceId: string | null = currentWorkspaceId) => {
@@ -56,6 +57,10 @@ export function Sidebar({
   useEffect(() => {
     setChatNodes(chats);
   }, [chats]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <>
@@ -149,24 +154,30 @@ export function Sidebar({
           >
             Home
           </Link>
-          <Select
-            value={currentWorkspaceId ?? undefined}
-            onValueChange={(value) => {
-              router.push(`/ws/${value}`);
-              closeMobile();
-            }}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select workspace" />
-            </SelectTrigger>
-            <SelectContent align="start">
-              {workspaces.map((workspace) => (
-                <SelectItem key={workspace.id} value={workspace.id}>
-                  {workspace.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {mounted ? (
+            <Select
+              value={currentWorkspaceId ?? undefined}
+              onValueChange={(value) => {
+                router.push(`/ws/${value}`);
+                closeMobile();
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select workspace" />
+              </SelectTrigger>
+              <SelectContent align="start">
+                {workspaces.map((workspace) => (
+                  <SelectItem key={workspace.id} value={workspace.id}>
+                    {workspace.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <div className="border-input text-muted-foreground flex h-9 w-full items-center justify-between rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs">
+              Select workspace
+            </div>
+          )}
         </div>
 
         {/* Chat tree */}

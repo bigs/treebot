@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Ellipsis, Trash2 } from "lucide-react";
@@ -41,6 +41,11 @@ export function WorkspaceCard({ workspace, chats }: WorkspaceCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleDelete = () => {
     startTransition(async () => {
@@ -80,33 +85,44 @@ export function WorkspaceCard({ workspace, chats }: WorkspaceCardProps) {
                 {workspace.name}
               </Link>
             </CardTitle>
-            <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="hover:bg-muted inline-flex size-8 items-center justify-center rounded-md"
+            {mounted ? (
+              <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="hover:bg-muted inline-flex size-8 items-center justify-center rounded-md"
+                    onClick={(event) => event.stopPropagation()}
+                    aria-label={`Workspace options for ${workspace.name}`}
+                  >
+                    <Ellipsis className="size-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
                   onClick={(event) => event.stopPropagation()}
-                  aria-label={`Workspace options for ${workspace.name}`}
                 >
-                  <Ellipsis className="size-4" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                onClick={(event) => event.stopPropagation()}
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setAlertOpen(true);
+                    }}
+                  >
+                    <Trash2 className="size-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <button
+                type="button"
+                className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground"
+                aria-label={`Workspace options for ${workspace.name}`}
+                disabled
               >
-                <DropdownMenuItem
-                  variant="destructive"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setAlertOpen(true);
-                  }}
-                >
-                  <Trash2 className="size-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                <Ellipsis className="size-4" />
+              </button>
+            )}
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -133,27 +149,29 @@ export function WorkspaceCard({ workspace, chats }: WorkspaceCardProps) {
         </CardContent>
       </div>
 
-      <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
-        <AlertDialogContent onClick={(event) => event.stopPropagation()}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete workspace?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the workspace and all its chats. This
-              action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={isPending}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {mounted ? (
+        <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
+          <AlertDialogContent onClick={(event) => event.stopPropagation()}>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete workspace?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete the workspace and all its chats.
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={isPending}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      ) : null}
     </Card>
   );
 }
