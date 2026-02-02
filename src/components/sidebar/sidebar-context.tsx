@@ -4,12 +4,14 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useState,
   type ReactNode,
 } from "react";
 
 interface SidebarContextValue {
   collapsed: boolean;
+  mobileOpen: boolean;
   toggleSidebar: () => void;
   closeMobile: () => void;
   openMobile: () => void;
@@ -30,26 +32,43 @@ export function useSidebar() {
 
 export function SidebarProvider({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedChats, setExpandedChats] = useState<Set<string>>(new Set());
 
   const toggleSidebar = useCallback(() => {
     setCollapsed((prev) => !prev);
   }, []);
 
-  const setMobileOpen = useCallback((nextOpen: boolean) => {
-    if (typeof document === "undefined") return;
-    const input = document.getElementById(SIDEBAR_MOBILE_TOGGLE_ID);
-    if (!(input instanceof HTMLInputElement)) return;
-    input.checked = nextOpen;
-  }, []);
-
   const openMobile = useCallback(() => {
     setMobileOpen(true);
-  }, [setMobileOpen]);
+  }, []);
 
   const closeMobile = useCallback(() => {
     setMobileOpen(false);
-  }, [setMobileOpen]);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(max-width: 767px)");
+    const handleChange = (event: MediaQueryListEvent) => {
+      if (event.matches) {
+        setMobileOpen(false);
+      }
+    };
+    if (media.matches) {
+      setMobileOpen(false);
+    }
+    if ("addEventListener" in media) {
+      media.addEventListener("change", handleChange);
+      return () => {
+        media.removeEventListener("change", handleChange);
+      };
+    }
+    media.addListener(handleChange);
+    return () => {
+      media.removeListener(handleChange);
+    };
+  }, []);
 
   const toggleChat = useCallback((id: string) => {
     setExpandedChats((prev) => {
@@ -78,6 +97,7 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
     <SidebarContext.Provider
       value={{
         collapsed,
+        mobileOpen,
         toggleSidebar,
         closeMobile,
         openMobile,

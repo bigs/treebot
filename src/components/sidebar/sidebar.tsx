@@ -30,7 +30,8 @@ export function Sidebar({
   activeWorkspaceId: string | null;
   showChats: boolean;
 }) {
-  const { collapsed, toggleSidebar, openMobile, closeMobile } = useSidebar();
+  const { collapsed, mobileOpen, toggleSidebar, openMobile, closeMobile } =
+    useSidebar();
   const router = useRouter();
   const pathname = usePathname();
   const derivedWorkspaceId = pathname.match(/^\/ws\/([^/]+)/)?.[1] ?? null;
@@ -61,6 +62,14 @@ export function Sidebar({
       <input
         id={SIDEBAR_MOBILE_TOGGLE_ID}
         type="checkbox"
+        checked={mobileOpen}
+        onChange={(event) => {
+          if (event.target.checked) {
+            openMobile();
+          } else {
+            closeMobile();
+          }
+        }}
         className="peer/sidebar sr-only"
       />
       <button
