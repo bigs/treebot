@@ -10,14 +10,16 @@ import {
 
 interface SidebarContextValue {
   collapsed: boolean;
-  toggleSidebar: () => void;
   mobileOpen: boolean;
-  openMobile: () => void;
+  toggleSidebar: () => void;
   closeMobile: () => void;
+  openMobile: () => void;
   expandedChats: Set<string>;
   toggleChat: (id: string) => void;
   expandChats: (ids: string[]) => void;
 }
+
+export const SIDEBAR_MOBILE_TOGGLE_ID = "sidebar-mobile-toggle";
 
 const SidebarContext = createContext<SidebarContextValue | null>(null);
 
@@ -71,10 +73,10 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
     <SidebarContext.Provider
       value={{
         collapsed,
-        toggleSidebar,
         mobileOpen,
-        openMobile,
+        toggleSidebar,
         closeMobile,
+        openMobile,
         expandedChats,
         toggleChat,
         expandChats,

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { PanelLeft, SquarePen, Settings, X } from "lucide-react";
 import type { ChatNode } from "@/lib/chat-tree";
-import { useSidebar } from "./sidebar-context";
+import { SIDEBAR_MOBILE_TOGGLE_ID, useSidebar } from "./sidebar-context";
 import { ChatTree } from "./chat-tree";
 import { cn } from "@/lib/utils";
 import { getWorkspaceChatTreeAction } from "@/lib/actions/sidebar-actions";
@@ -30,7 +30,7 @@ export function Sidebar({
   activeWorkspaceId: string | null;
   showChats: boolean;
 }) {
-  const { collapsed, toggleSidebar, mobileOpen, openMobile, closeMobile } =
+  const { collapsed, mobileOpen, toggleSidebar, openMobile, closeMobile } =
     useSidebar();
   const router = useRouter();
   const pathname = usePathname();
@@ -38,6 +38,7 @@ export function Sidebar({
   const currentWorkspaceId = derivedWorkspaceId ?? activeWorkspaceId ?? null;
   const shouldShowChats = showChats || Boolean(derivedWorkspaceId);
   const [chatNodes, setChatNodes] = useState(chats);
+  const [mounted, setMounted] = useState(false);
   const visibleChatNodes = currentWorkspaceId ? chatNodes : [];
   const refreshWorkspaceChats = useCallback(
     (workspaceId: string | null = currentWorkspaceId) => {
@@ -57,36 +58,50 @@ export function Sidebar({
     setChatNodes(chats);
   }, [chats]);
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <>
+      <input
+        id={SIDEBAR_MOBILE_TOGGLE_ID}
+        type="checkbox"
+        checked={mobileOpen}
+        onChange={(event) => {
+          if (event.target.checked) {
+            openMobile();
+          } else {
+            closeMobile();
+          }
+        }}
+        className="peer/sidebar sr-only"
+      />
       <button
         type="button"
         onClick={openMobile}
         className={cn(
-          "bg-background text-foreground border-border fixed left-[calc(env(safe-area-inset-left)+0.75rem)] top-[calc(env(safe-area-inset-top)+0.75rem)] z-50 inline-flex size-9 items-center justify-center rounded-md border shadow-sm md:hidden",
-          mobileOpen && "pointer-events-none opacity-0"
+          "bg-background text-foreground border-border fixed left-[calc(env(safe-area-inset-left)+0.75rem)] top-[calc(env(safe-area-inset-top)+0.75rem)] z-50 inline-flex size-9 items-center justify-center rounded-md border shadow-sm transition-opacity md:hidden",
+          "peer-checked/sidebar:pointer-events-none peer-checked/sidebar:opacity-0"
         )}
         aria-label="Open sidebar"
       >
         <PanelLeft className="size-4" />
       </button>
 
-      {mobileOpen && (
-        <button
-          type="button"
-          className="fixed inset-0 z-40 bg-black/50 md:hidden"
-          onClick={closeMobile}
-          aria-label="Close sidebar"
-        />
-      )}
+      <button
+        type="button"
+        className="fixed inset-0 z-40 bg-black/50 opacity-0 pointer-events-none transition-opacity md:hidden peer-checked/sidebar:pointer-events-auto peer-checked/sidebar:opacity-100"
+        onClick={closeMobile}
+        aria-label="Close sidebar"
+      />
 
       <aside
         className={cn(
           "bg-sidebar text-sidebar-foreground border-sidebar-border fixed inset-y-0 left-0 z-50 flex flex-col border-r transition-[width,transform] duration-200",
           "w-64",
           collapsed ? "md:w-12" : "md:w-64",
-          mobileOpen ? "translate-x-0" : "-translate-x-full",
-          "md:translate-x-0"
+          "-translate-x-full md:translate-x-0 peer-checked/sidebar:translate-x-0"
         )}
       >
         {/* Top bar */}
@@ -139,24 +154,30 @@ export function Sidebar({
           >
             Home
           </Link>
-          <Select
-            value={currentWorkspaceId ?? undefined}
-            onValueChange={(value) => {
-              router.push(`/ws/${value}`);
-              closeMobile();
-            }}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select workspace" />
-            </SelectTrigger>
-            <SelectContent align="start">
-              {workspaces.map((workspace) => (
-                <SelectItem key={workspace.id} value={workspace.id}>
-                  {workspace.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {mounted ? (
+            <Select
+              value={currentWorkspaceId ?? undefined}
+              onValueChange={(value) => {
+                router.push(`/ws/${value}`);
+                closeMobile();
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select workspace" />
+              </SelectTrigger>
+              <SelectContent align="start">
+                {workspaces.map((workspace) => (
+                  <SelectItem key={workspace.id} value={workspace.id}>
+                    {workspace.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <div className="border-input text-muted-foreground flex h-9 w-full items-center justify-between rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs">
+              Select workspace
+            </div>
+          )}
         </div>
 
         {/* Chat tree */}

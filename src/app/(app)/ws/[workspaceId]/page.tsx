@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { getMostRecentChatByWorkspace, getWorkspaceById } from "@/db/queries";
+import { redirectToLoginOrOnboarding } from "@/lib/redirects";
 
 export default async function WorkspacePage({
   params,
@@ -11,7 +12,7 @@ export default async function WorkspacePage({
 
   const session = await getSession();
   if (!session) {
-    redirect("/login");
+    redirectToLoginOrOnboarding();
   }
 
   const workspace = getWorkspaceById(workspaceId, session.sub);

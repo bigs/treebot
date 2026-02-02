@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
+import { getUserCount } from "@/db/queries";
 
 const PUBLIC_PATHS = ["/login", "/register", "/onboarding"];
 
@@ -47,6 +48,9 @@ export async function proxy(request: NextRequest) {
 
   // Protected paths → require session
   if (!loggedIn) {
+    if (getUserCount() === 0) {
+      return NextResponse.redirect(new URL("/onboarding", request.url));
+    }
     return NextResponse.redirect(new URL("/login", request.url));
   }
 

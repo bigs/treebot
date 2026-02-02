@@ -1,12 +1,12 @@
-import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { getApiKeysByUser } from "@/db/queries";
 import { ApiKeyForm } from "./api-key-form";
+import { redirectToLoginOrOnboarding } from "@/lib/redirects";
 
 export default async function OnboardingStep2() {
   const session = await getSession();
   if (!session) {
-    redirect("/login");
+    redirectToLoginOrOnboarding();
   }
 
   const savedKeys = getApiKeysByUser(session.sub);

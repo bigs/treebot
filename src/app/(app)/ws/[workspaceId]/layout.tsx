@@ -1,8 +1,8 @@
-import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { getChatsByWorkspace, getWorkspacesByUser } from "@/db/queries";
 import { buildChatTree } from "@/lib/chat-tree";
 import { AppShell } from "@/components/sidebar/app-shell";
+import { redirectToLoginOrOnboarding } from "@/lib/redirects";
 
 export default async function WorkspaceLayout({
   children,
@@ -14,7 +14,7 @@ export default async function WorkspaceLayout({
   const { workspaceId } = await params;
   const session = await getSession();
   if (!session) {
-    redirect("/login");
+    redirectToLoginOrOnboarding();
   }
 
   const workspaces = getWorkspacesByUser(session.sub);

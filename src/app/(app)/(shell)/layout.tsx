@@ -1,7 +1,7 @@
-import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { getWorkspacesByUser } from "@/db/queries";
 import { AppShell } from "@/components/sidebar/app-shell";
+import { redirectToLoginOrOnboarding } from "@/lib/redirects";
 
 export default async function ShellLayout({
   children,
@@ -10,7 +10,7 @@ export default async function ShellLayout({
 }) {
   const session = await getSession();
   if (!session) {
-    redirect("/login");
+    redirectToLoginOrOnboarding();
   }
 
   const workspaces = getWorkspacesByUser(session.sub);

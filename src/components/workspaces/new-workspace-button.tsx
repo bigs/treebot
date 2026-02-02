@@ -1,6 +1,12 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import {
+  useRef,
+  useState,
+  useTransition,
+  type ReactNode,
+  type ComponentProps,
+} from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +20,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { createWorkspaceAction } from "@/lib/actions/workspace-actions";
 
-export function NewWorkspaceButton() {
+export function NewWorkspaceButton({
+  children,
+  className,
+  variant,
+  size,
+  ariaLabel,
+}: {
+  children?: ReactNode;
+  className?: string;
+  variant?: ComponentProps<typeof Button>["variant"];
+  size?: ComponentProps<typeof Button>["size"];
+  ariaLabel?: string;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -53,8 +71,15 @@ export function NewWorkspaceButton() {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <Button type="button" onClick={() => handleOpenChange(true)}>
-        New Workspace
+      <Button
+        type="button"
+        onClick={() => handleOpenChange(true)}
+        className={className}
+        variant={variant}
+        size={size}
+        aria-label={ariaLabel}
+      >
+        {children ?? "New Workspace"}
       </Button>
       <DialogContent>
         <DialogHeader>

@@ -2,9 +2,10 @@ import { getModels } from "@/lib/models";
 import { NewChatForm } from "./new-chat-form";
 import { getSession } from "@/lib/auth";
 import { getApiKeysByUser, getWorkspaceById } from "@/db/queries";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { redirectToLoginOrOnboarding } from "@/lib/redirects";
 
 export default async function NewChatPage({
   params,
@@ -14,7 +15,7 @@ export default async function NewChatPage({
   const { workspaceId } = await params;
   const session = await getSession();
   if (!session) {
-    redirect("/login");
+    redirectToLoginOrOnboarding();
   }
 
   const workspace = getWorkspaceById(workspaceId, session.sub);
