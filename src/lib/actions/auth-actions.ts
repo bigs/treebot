@@ -11,6 +11,7 @@ import {
   redeemInviteCode,
 } from "@/db/queries";
 import { createSession, destroySession } from "@/lib/auth";
+import { redirectToLoginOrOnboarding } from "@/lib/redirects";
 
 export type ActionState = { error?: string } | undefined;
 
@@ -142,5 +143,5 @@ export async function register(
 
 export async function logout(): Promise<void> {
   await destroySession();
-  redirect("/login");
+  redirectToLoginOrOnboarding();
 }

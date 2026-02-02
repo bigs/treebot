@@ -1,13 +1,13 @@
-import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { getRecentChatsByWorkspace, getWorkspacesByUser } from "@/db/queries";
 import { NewWorkspaceButton } from "@/components/workspaces/new-workspace-button";
 import { WorkspaceCard } from "@/components/workspaces/workspace-card";
+import { redirectToLoginOrOnboarding } from "@/lib/redirects";
 
 export default async function HomePage() {
   const session = await getSession();
   if (!session) {
-    redirect("/login");
+    redirectToLoginOrOnboarding();
   }
 
   const workspaces = getWorkspacesByUser(session.sub).map((workspace) => ({

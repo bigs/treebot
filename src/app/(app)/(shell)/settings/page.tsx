@@ -1,13 +1,13 @@
-import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { getApiKeysByUser } from "@/db/queries";
 import { ChangePasswordForm } from "./change-password-form";
 import { ApiKeyForm } from "@/app/onboarding/step-2/api-key-form";
+import { redirectToLoginOrOnboarding } from "@/lib/redirects";
 
 export default async function SettingsPage() {
   const session = await getSession();
   if (!session) {
-    redirect("/login");
+    redirectToLoginOrOnboarding();
   }
 
   const savedPlatforms = getApiKeysByUser(session.sub).map(

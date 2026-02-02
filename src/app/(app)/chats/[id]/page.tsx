@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { getWorkspaceIdForChat } from "@/db/queries";
+import { redirectToLoginOrOnboarding } from "@/lib/redirects";
 
 export default async function LegacyChatPage({
   params,
@@ -11,7 +12,7 @@ export default async function LegacyChatPage({
 
   const session = await getSession();
   if (!session) {
-    redirect("/login");
+    redirectToLoginOrOnboarding();
   }
 
   const record = getWorkspaceIdForChat(id, session.sub);
