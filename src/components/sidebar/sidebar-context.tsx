@@ -4,7 +4,6 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useState,
   type ReactNode,
 } from "react";
@@ -45,29 +44,6 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
 
   const closeMobile = useCallback(() => {
     setMobileOpen(false);
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const media = window.matchMedia("(max-width: 767px)");
-    const handleChange = (event: MediaQueryListEvent) => {
-      if (event.matches) {
-        setMobileOpen(false);
-      }
-    };
-    if (media.matches) {
-      setMobileOpen(false);
-    }
-    if ("addEventListener" in media) {
-      media.addEventListener("change", handleChange);
-      return () => {
-        media.removeEventListener("change", handleChange);
-      };
-    }
-    media.addListener(handleChange);
-    return () => {
-      media.removeListener(handleChange);
-    };
   }, []);
 
   const toggleChat = useCallback((id: string) => {
