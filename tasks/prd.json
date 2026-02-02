@@ -1,0 +1,101 @@
+{
+  "name": "CSS-First Responsive Navigation Cleanup",
+  "description": "Shift responsive navigation behavior to CSS breakpoints and reduce responsive-related React effects/listeners while preserving minimal JS for mobile drawer toggle.",
+  "branchName": "ralph/css-first-responsive-navigation",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "CSS-first sidebar responsiveness",
+      "description": "As a user, I want the sidebar layout to adapt between mobile and desktop using CSS so resizing works immediately.",
+      "acceptanceCriteria": [
+        "Sidebar width, transforms, and visibility are controlled by Tailwind breakpoints (md:) rather than JS-driven logic",
+        "Resizing from desktop to mobile updates the layout instantly without a refresh",
+        "The sidebar remains usable on both desktop and mobile",
+        "pnpm lint passes",
+        "pnpm build passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "",
+      "dependsOn": [],
+      "completionNotes": "Completed by agent"
+    },
+    {
+      "id": "US-002",
+      "title": "Minimal-JS mobile drawer toggle",
+      "description": "As a user, I want to open and close the mobile drawer reliably with minimal state handling.",
+      "acceptanceCriteria": [
+        "The existing mobileOpen state is retained only for open/close",
+        "Overlay and close interactions continue to work on mobile",
+        "When resizing to mobile width, the drawer is closed by default",
+        "pnpm lint passes",
+        "pnpm build passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "",
+      "dependsOn": [
+        "US-001"
+      ]
+    },
+    {
+      "id": "US-003",
+      "title": "Top bar responsive layout",
+      "description": "As a user, I want top bar actions to reflow correctly across breakpoints.",
+      "acceptanceCriteria": [
+        "Top bar elements are laid out with CSS breakpoints only",
+        "No responsive layout changes are driven by useEffect or matchMedia",
+        "Layout remains consistent at the md breakpoint and above",
+        "pnpm lint passes",
+        "pnpm build passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "",
+      "dependsOn": [
+        "US-001"
+      ]
+    },
+    {
+      "id": "US-004",
+      "title": "Composer and chat input responsiveness",
+      "description": "As a user, I want the chat input/composer to behave correctly across breakpoints without JS-driven responsive logic.",
+      "acceptanceCriteria": [
+        "Any matchMedia-based focus or layout logic is removed if CSS can replace it",
+        "Input sizing and spacing adjust via Tailwind breakpoints",
+        "Behavior remains correct on mobile and desktop without resize glitches",
+        "pnpm lint passes",
+        "pnpm build passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "",
+      "dependsOn": [
+        "US-001",
+        "US-003"
+      ]
+    },
+    {
+      "id": "US-005",
+      "title": "Remove matchMedia responsive logic",
+      "description": "As a developer, I want responsive behavior driven by CSS instead of matchMedia.",
+      "acceptanceCriteria": [
+        "matchMedia use for responsiveness is removed where CSS can accomplish the same behavior",
+        "Remaining responsive logic is CSS-first; any unavoidable JS is explicitly justified",
+        "pnpm lint passes",
+        "pnpm build passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "",
+      "dependsOn": [
+        "US-001",
+        "US-003",
+        "US-004"
+      ]
+    }
+  ],
+  "metadata": {
+    "updatedAt": "2026-02-02T16:22:02.889Z"
+  }
+}

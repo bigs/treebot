@@ -11,13 +11,14 @@ import {
 interface SidebarContextValue {
   collapsed: boolean;
   toggleSidebar: () => void;
-  mobileOpen: boolean;
-  openMobile: () => void;
   closeMobile: () => void;
+  openMobile: () => void;
   expandedChats: Set<string>;
   toggleChat: (id: string) => void;
   expandChats: (ids: string[]) => void;
 }
+
+export const SIDEBAR_MOBILE_TOGGLE_ID = "sidebar-mobile-toggle";
 
 const SidebarContext = createContext<SidebarContextValue | null>(null);
 
@@ -29,20 +30,26 @@ export function useSidebar() {
 
 export function SidebarProvider({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedChats, setExpandedChats] = useState<Set<string>>(new Set());
 
   const toggleSidebar = useCallback(() => {
     setCollapsed((prev) => !prev);
   }, []);
 
+  const setMobileOpen = useCallback((nextOpen: boolean) => {
+    if (typeof document === "undefined") return;
+    const input = document.getElementById(SIDEBAR_MOBILE_TOGGLE_ID);
+    if (!(input instanceof HTMLInputElement)) return;
+    input.checked = nextOpen;
+  }, []);
+
   const openMobile = useCallback(() => {
     setMobileOpen(true);
-  }, []);
+  }, [setMobileOpen]);
 
   const closeMobile = useCallback(() => {
     setMobileOpen(false);
-  }, []);
+  }, [setMobileOpen]);
 
   const toggleChat = useCallback((id: string) => {
     setExpandedChats((prev) => {
@@ -72,9 +79,8 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
       value={{
         collapsed,
         toggleSidebar,
-        mobileOpen,
-        openMobile,
         closeMobile,
+        openMobile,
         expandedChats,
         toggleChat,
         expandChats,

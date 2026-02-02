@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { PanelLeft, SquarePen, Settings, X } from "lucide-react";
 import type { ChatNode } from "@/lib/chat-tree";
-import { useSidebar } from "./sidebar-context";
+import { SIDEBAR_MOBILE_TOGGLE_ID, useSidebar } from "./sidebar-context";
 import { ChatTree } from "./chat-tree";
 import { cn } from "@/lib/utils";
 import { getWorkspaceChatTreeAction } from "@/lib/actions/sidebar-actions";
@@ -30,8 +30,7 @@ export function Sidebar({
   activeWorkspaceId: string | null;
   showChats: boolean;
 }) {
-  const { collapsed, toggleSidebar, mobileOpen, openMobile, closeMobile } =
-    useSidebar();
+  const { collapsed, toggleSidebar, openMobile, closeMobile } = useSidebar();
   const router = useRouter();
   const pathname = usePathname();
   const derivedWorkspaceId = pathname.match(/^\/ws\/([^/]+)/)?.[1] ?? null;
@@ -59,34 +58,36 @@ export function Sidebar({
 
   return (
     <>
+      <input
+        id={SIDEBAR_MOBILE_TOGGLE_ID}
+        type="checkbox"
+        className="peer/sidebar sr-only"
+      />
       <button
         type="button"
         onClick={openMobile}
         className={cn(
-          "bg-background text-foreground border-border fixed left-[calc(env(safe-area-inset-left)+0.75rem)] top-[calc(env(safe-area-inset-top)+0.75rem)] z-50 inline-flex size-9 items-center justify-center rounded-md border shadow-sm md:hidden",
-          mobileOpen && "pointer-events-none opacity-0"
+          "bg-background text-foreground border-border fixed left-[calc(env(safe-area-inset-left)+0.75rem)] top-[calc(env(safe-area-inset-top)+0.75rem)] z-50 inline-flex size-9 items-center justify-center rounded-md border shadow-sm transition-opacity md:hidden",
+          "peer-checked/sidebar:pointer-events-none peer-checked/sidebar:opacity-0"
         )}
         aria-label="Open sidebar"
       >
         <PanelLeft className="size-4" />
       </button>
 
-      {mobileOpen && (
-        <button
-          type="button"
-          className="fixed inset-0 z-40 bg-black/50 md:hidden"
-          onClick={closeMobile}
-          aria-label="Close sidebar"
-        />
-      )}
+      <button
+        type="button"
+        className="fixed inset-0 z-40 bg-black/50 opacity-0 pointer-events-none transition-opacity md:hidden peer-checked/sidebar:pointer-events-auto peer-checked/sidebar:opacity-100"
+        onClick={closeMobile}
+        aria-label="Close sidebar"
+      />
 
       <aside
         className={cn(
           "bg-sidebar text-sidebar-foreground border-sidebar-border fixed inset-y-0 left-0 z-50 flex flex-col border-r transition-[width,transform] duration-200",
           "w-64",
           collapsed ? "md:w-12" : "md:w-64",
-          mobileOpen ? "translate-x-0" : "-translate-x-full",
-          "md:translate-x-0"
+          "-translate-x-full md:translate-x-0 peer-checked/sidebar:translate-x-0"
         )}
       >
         {/* Top bar */}
