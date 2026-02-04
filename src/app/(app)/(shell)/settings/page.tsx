@@ -3,6 +3,8 @@ import { getApiKeysByUser } from "@/db/queries";
 import { ChangePasswordForm } from "./change-password-form";
 import { ApiKeyForm } from "@/app/onboarding/step-2/api-key-form";
 import { redirectToLoginOrOnboarding } from "@/lib/redirects";
+import { logout } from "@/lib/actions/auth-actions";
+import { Button } from "@/components/ui/button";
 
 export default async function SettingsPage() {
   const session = await getSession();
@@ -29,6 +31,15 @@ export default async function SettingsPage() {
           <ApiKeyForm savedPlatforms={savedPlatforms} showContinue={false} />
         </section>
       )}
+
+      <section className="space-y-4 border-t pt-8">
+        <h2 className="text-lg font-medium">Account</h2>
+        <form action={logout}>
+          <Button type="submit" variant="outline" className="w-full">
+            Sign out
+          </Button>
+        </form>
+      </section>
     </div>
   );
 }
