@@ -35,7 +35,7 @@ export default async function SettingsPage() {
       <section className="space-y-4 border-t pt-8">
         <h2 className="text-lg font-medium">Account</h2>
         <form action={logout}>
-          <Button type="submit" variant="outline" className="w-full">
+          <Button type="submit" variant="destructive" className="w-full">
             Sign out
           </Button>
         </form>
