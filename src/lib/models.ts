@@ -49,6 +49,14 @@ const MODEL_REASONING: Record<
     ],
     default: "high",
   },
+  "gemini-3.1-pro-preview": {
+    levels: [
+      { value: "low", label: "Low" },
+      { value: "medium", label: "Medium" },
+      { value: "high", label: "High" },
+    ],
+    default: "high",
+  },
 };
 
 const DEFAULT_REASONING: { levels: ReasoningOption[]; default: string } = {
@@ -68,13 +76,20 @@ function getReasoningConfig(modelId: string, isReasoning: boolean) {
 }
 
 const SUPPORTED_MODELS: Record<Platform, string[]> = {
-  google: ["gemini-3-flash-preview", "gemini-3-pro-preview"],
+  google: ["gemini-3-flash-preview", "gemini-3-pro-preview", "gemini-3.1-pro-preview"],
   openai: ["gpt-5.2"],
 };
 
 const PROVIDER_NAMES: Record<Platform, string> = {
   google: "Google",
   openai: "OpenAI",
+};
+
+const FRIENDLY_NAMES: Record<string, string> = {
+  "gemini-3-flash-preview": "Gemini 3 Flash",
+  "gemini-3-pro-preview": "Gemini 3 Pro",
+  "gemini-3.1-pro-preview": "Gemini 3.1 Pro",
+  "gpt-5.2": "GPT-5.2",
 };
 
 interface ModelsDevModelEntry {
@@ -90,23 +105,26 @@ interface ModelsDevProvider {
 type ModelsDevResponse = Record<string, ModelsDevProvider>;
 
 const HARDCODED_FALLBACK: ModelInfo[] = (() => {
-  const entries: { id: string; name: string; provider: Platform }[] = [
+  const entries: { id: string; provider: Platform }[] = [
     {
       id: "gemini-3-flash-preview",
-      name: "Gemini 3 Flash Preview",
       provider: "google",
     },
     {
       id: "gemini-3-pro-preview",
-      name: "Gemini 3 Pro Preview",
       provider: "google",
     },
-    { id: "gpt-5.2", name: "GPT-5.2", provider: "openai" },
+    {
+      id: "gemini-3.1-pro-preview",
+      provider: "google",
+    },
+    { id: "gpt-5.2", provider: "openai" },
   ];
   return entries.map((e) => {
     const config = getReasoningConfig(e.id, true);
     return {
       ...e,
+      name: FRIENDLY_NAMES[e.id] ?? e.id,
       providerName: PROVIDER_NAMES[e.provider],
       reasoning: true,
       reasoningLevels: config.levels,
@@ -153,11 +171,11 @@ export async function getModels(): Promise<ModelInfo[]> {
     for (const [platform, modelIds] of Object.entries(SUPPORTED_MODELS)) {
       for (const modelId of modelIds) {
         const entry = index.get(modelId);
-        const isReasoning = entry?.reasoning ?? false;
+        const isReasoning = entry?.reasoning || !!MODEL_REASONING[modelId];
         const config = getReasoningConfig(modelId, isReasoning);
         models.push({
           id: modelId,
-          name: entry?.name ?? modelId,
+          name: FRIENDLY_NAMES[modelId] ?? entry?.name ?? modelId,
           provider: platform as Platform,
           providerName: PROVIDER_NAMES[platform as Platform],
           reasoning: isReasoning,

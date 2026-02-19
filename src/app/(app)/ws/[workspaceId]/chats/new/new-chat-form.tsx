@@ -44,7 +44,7 @@ import type { ModelInfo } from "@/lib/models";
 
 const LS_MODEL_KEY = "treebot:last-model";
 const LS_REASONING_KEY = "treebot:last-reasoning";
-const DEFAULT_MODEL_ID = "gemini-3-pro-preview";
+const DEFAULT_MODEL_ID = "gemini-3.1-pro-preview";
 const DEFAULT_REASONING = "high";
 
 function validReasoningForModel(
